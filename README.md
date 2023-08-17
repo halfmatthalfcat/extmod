@@ -5,7 +5,7 @@
 </div>
 
 > [!WARNING]
-> extmod relies on currently experimental Node features. While we will strive to maintain compatiblity with future Node releases, please be mindful of the risks associated with including experimental tooling in your stack.
+> Extmod relies on currently experimental Node features. While we will strive to maintain compatiblity with future Node releases, please be mindful of the risks associated with including experimental tooling in your stack.
 
 * Pull remote packages into your project
 * Supports externals, have dependencies use local packages
