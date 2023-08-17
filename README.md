@@ -1,11 +1,11 @@
 <div align="center">
-    <h1>extmod</h1>
-    <p><b>Dynamically pull ESM modules in Node, ala Federated Modules
+  <h1>extmod</h1>
+ <p><b>Dynamically pull remote ESM modules in Node, ala Federated Modules
 </b></p>
 </div>
 
-> This project is currently a work in progress and in an unstable state. Once we reach GA, we'll remove
-this banner and begin publishing stable versions to npm.
+> [!WARNING]
+> extmod relies on currently experimental Node features. While we will strive to maintain compatiblity with future Node releases, please be mindful of the risks associated with including experimental tooling in your stack.
 
 * Pull remote packages into your project
 * Supports externals, have dependencies use local packages
