@@ -1,0 +1,14 @@
+{
+  "name": "extmod",
+  "version": "1.0.0",
+  "private": true,
+  "workspaces": [
+    "packages/*"
+  ],
+  "repository": "git@github.com:halfmatthalfcat/extmod.git",
+  "author": "halfmatthalfcat <mjo2089@gmail.com>",
+  "license": "MIT",
+  "devDependencies": {
+    "lerna": "^5.1.8"
+  }
+}
