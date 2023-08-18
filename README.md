@@ -10,7 +10,7 @@
 * Pull remote packages into your project, at buildtime or runtime.
 * Supports externals, have dependencies use local packages.
 
-## Project
+## Projects
 
 * `@extmod/core`
   * Contains the relevent, custom esm loader, utilities and eventual CLI for managing module permissions.
