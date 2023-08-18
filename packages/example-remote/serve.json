@@ -1,0 +1,19 @@
+{
+  "directoryListing": false,
+  "public": "out",
+  "headers": [
+    {
+      "source": "*",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "no-cache, no-store"
+        },
+        {
+          "key": "Access-Control-Allow-Origin",
+          "value": "*"
+        }
+      ]
+    }
+  ]
+}

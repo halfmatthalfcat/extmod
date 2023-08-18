@@ -1,0 +1,15 @@
+{
+  "name": "@extmod/example-core",
+  "private": true,
+  "version": "0.0.0",
+  "scripts": {
+    "start": "node --experimental-policy=./policy.json --experimental-loader=../../node_modules/@extmod/core/dist/loader.mjs ./dist/index.mjs",
+    "build": "tsup"
+  },
+  "devDependencies": {
+    "@extmod/core": "*",
+    "@types/node": "^20.5.0",
+    "tsup": "^7.2.0",
+    "typescript": "^5.1.6"
+  }
+}

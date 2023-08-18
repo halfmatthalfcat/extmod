@@ -1,0 +1,24 @@
+{
+  "resources": {
+    "http://localhost:8080/index.js": {
+      "integrity": true,
+      "dependencies": true
+    },
+    "http://localhost:8080/index.mjs": {
+      "integrity": true,
+      "dependencies": true
+    }
+  },
+  "scopes": {
+    "./node_modules/": {
+      "cascade": true,
+      "dependencies": true,
+      "integrity": true
+    },
+    "file:": {
+      "cascade": true,
+      "dependencies": true,
+      "integrity": true
+    }
+  }
+}
