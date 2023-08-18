@@ -9,3 +9,12 @@
 
 * Pull remote packages into your project, at buildtime or runtime.
 * Supports externals, have dependencies use local packages.
+
+## Project
+
+* `@extmod/core`
+  * Contains the relevent, custom esm loader, utilities and eventual CLI for managing module permissions.
+* `@extmod/example-core`
+  * Contains simple tests against `@extmod/example-remote` using `@extmod/core`.
+* `@extmod/example-remote`
+  * Contains example, locally-hosted test files of various formats for use in local testing.
