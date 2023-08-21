@@ -1,11 +1,11 @@
 #!/usr/bin/env node
 
 import { Command } from "@commander-js/extra-typings";
-import { version } from "../package.json";
+import { version } from "@/package.json";
 const program = new Command();
 
-import init from './init';
-import config from './config';
+import config from "./config";
+import init from "./init";
 
 program
   .name("extmod")
@@ -14,8 +14,6 @@ program
   )
   .version(version);
 
-program
-  .addCommand(init)
-  .addCommand(config);
+program.addCommand(init).addCommand(config);
 
-program.parse();
+await program.parseAsync();

@@ -22,6 +22,10 @@ const errorMap: z.ZodErrorMap = (issue) => {
           issue.received
         }`,
       };
+    case z.ZodIssueCode.invalid_enum_value:
+      return {
+        message: `${makePath(issue.path)}: invalid option ${issue.received}`,
+      };
     default:
       return {
         message: `${makePath(issue.path)}: ${issue.message}`,
@@ -54,7 +58,7 @@ const schema = z.object(
 );
 
 export const validate = async <T extends object>(obj: T) =>
-  schema.safeParseAsync(obj).then((result) => {
+  schema.safeParseAsync(obj, { errorMap }).then((result) => {
     if (result.success) {
       return [];
     } else {

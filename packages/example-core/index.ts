@@ -6,4 +6,4 @@ const { [EXTMOD_ERROR]: error } = cjsModule;
 assert(error != null);
 
 import esmModule from "http://localhost:8080/index.mjs";
-assert(typeof esmModule === 'function');
+assert(typeof esmModule === "function");

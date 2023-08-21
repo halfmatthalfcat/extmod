@@ -1,13 +1,9 @@
 import generate from "@babel/generator";
 import * as parser from "@babel/parser";
 import * as t from "@babel/types";
-import {
-  EXTMOD_ERROR,
-  EXTMOD_ERROR_CODE,
-  EXTMOD_ERROR_REASON,
-} from ".";
-import { ExtModErrorCodes, ExtModErrorReasons } from "./index";
 import { getReasonPhrase } from "http-status-codes";
+import { EXTMOD_ERROR, EXTMOD_ERROR_CODE, EXTMOD_ERROR_REASON } from ".";
+import { ExtModErrorCodes, ExtModErrorReasons } from "./index";
 
 const buildError = (code: number, reason: string) =>
   generate(
@@ -42,10 +38,7 @@ export async function load(url: string, _, next: (url: string) => void) {
         return {
           format: "module",
           shortCircuit: true,
-          source: buildError(
-            response.status,
-            getReasonPhrase(response.status)
-          ),
+          source: buildError(response.status, getReasonPhrase(response.status)),
         };
       }
 
