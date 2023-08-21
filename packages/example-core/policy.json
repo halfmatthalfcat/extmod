@@ -10,15 +10,9 @@
     }
   },
   "scopes": {
-    "./node_modules/": {
+    ".": {
       "cascade": true,
-      "dependencies": true,
-      "integrity": true
-    },
-    "file:": {
-      "cascade": true,
-      "dependencies": true,
-      "integrity": true
+      "dependencies": true
     }
   }
 }
