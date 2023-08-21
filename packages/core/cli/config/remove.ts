@@ -2,6 +2,7 @@ import { ExtmodConfig, validate } from "@/schema";
 import { Command } from "@commander-js/extra-typings";
 import { readFile, stat, writeFile } from "node:fs/promises";
 
+// @ts-ignore
 const program = new Command()
   .name("remove")
   .description(
@@ -47,7 +48,9 @@ const program = new Command()
             delete config.aliases[alias];
           }
         }
-      } else if (Object.keys(config.aliases).some(alias => alias === remoteUrlOrAlias)) {
+      } else if (
+        Object.keys(config.aliases).some((alias) => alias === remoteUrlOrAlias)
+      ) {
         const resource = config.aliases[remoteUrlOrAlias];
 
         delete config.aliases[remoteUrlOrAlias];

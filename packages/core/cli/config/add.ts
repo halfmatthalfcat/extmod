@@ -2,6 +2,7 @@ import { ExtmodConfig, validate } from "@/schema";
 import { Command, InvalidArgumentError } from "@commander-js/extra-typings";
 import { readFile, stat, writeFile } from "node:fs/promises";
 
+// @ts-ignore
 const program = new Command()
   .name("add")
   .description(
