@@ -1,0 +1,25 @@
+{
+  "version": "1.0",
+  "aliases": {
+    "local": "http://localhost:53089/index.mjs",
+    "local-cjs": "http://localhost:53089/index.js"
+  },
+  "policy": {
+    "resources": {
+      "http://localhost:53089/index.mjs": {
+        "dependencies": true,
+        "integrity": true
+      },
+      "http://localhost:53089/index.js": {
+        "dependencies": true,
+        "integrity": true
+      }
+    },
+    "scopes": {
+      "file:": {
+        "dependencies": true,
+        "integrity": true
+      }
+    }
+  }
+}
