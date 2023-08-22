@@ -41,27 +41,47 @@ const program = new Command()
         );
       }
 
-      // @ts-ignore
-      const loader = resolve("@extmod/core/loader", import.meta.url).replace(
-        "file://",
-        ""
-      );
+      let loader: string;
+
+      try {
+        // @ts-ignore
+       loader = resolve("@extmod/core/loader", import.meta.url).replace(
+          "file://",
+          ""
+        )
+      } catch {
+        return program.error(`Unable to find @extmod/core/loader, terminating.`);
+      }
 
       const tempConfig = temporaryFile({ extension: "json" });
       await writeFile(tempConfig, JSON.stringify(config.policy, null, 2));
 
-      console.log("node", [
-        `--experimental-policy=${tempConfig}`,
-        `--experimental-loader=${loader}`,
-        ...command,
-      ]);
+      let [ c, ...rest ] = command;
 
-      const process = spawn(
+      const isLocalFile = await stat(`${process.cwd()}/${c}`)
+        .catch(() => false)
+        .then(() => true);
+
+      // Try to resolve the bin path
+      if (!isLocalFile) {
+        try {
+          // @ts-ignore
+          c = resolve(c, import.meta.url).replace(
+            "file://",
+            ""
+          );
+        } catch {
+          return program.error(`Could not resolve ${c} as a local file or node executable, terminating.`);
+        }
+      }
+
+      const p = spawn(
         "node",
         [
           `--experimental-policy=${tempConfig}`,
           `--experimental-loader=${loader}`,
-          ...command,
+          c,
+          ...rest,
         ],
         {
           stdio: "inherit",
@@ -69,7 +89,7 @@ const program = new Command()
       );
 
       await new Promise((resolve, reject) => {
-        process.on("exit", (code) => {
+        p.on("exit", (code) => {
           if (!code) {
             resolve(void 0);
           } else {
@@ -77,7 +97,7 @@ const program = new Command()
           }
         });
 
-        process.on("error", reject);
+        p.on("error", reject);
       });
     } catch (err) {
       return program.error(
@@ -86,7 +106,6 @@ const program = new Command()
         }`
       );
     }
-  })
-  .showHelpAfterError();
+  });
 
 export default program;
