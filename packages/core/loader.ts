@@ -1,12 +1,14 @@
 import g from "@babel/generator";
-// @ts-ignore: babel .d.ts is wrong
-// @see: https://github.com/babel/babel/issues/15269
-const { default: generate } = g;
 import * as parser from "@babel/parser";
 import * as t from "@babel/types";
 import { getReasonPhrase } from "http-status-codes";
+import { readFile } from "node:fs/promises";
+import { dirname, extname, join, sep } from "node:path";
 import { EXTMOD_ERROR, EXTMOD_ERROR_CODE, EXTMOD_ERROR_REASON } from ".";
 import { ExtModErrorCodes, ExtModErrorReasons } from "./index";
+// @ts-ignore: babel .d.ts is wrong
+// @see: https://github.com/babel/babel/issues/15269
+const { default: generate } = g;
 
 const buildError = (code: number, reason: string) =>
   generate(
@@ -29,8 +31,15 @@ const buildError = (code: number, reason: string) =>
     )
   ).code;
 
-export async function load(url: string, _, next: (url: string) => void) {
-  if (/^https?/.test(url)) {
+export async function load(
+  resolvedUrl: string,
+  // @ts-ignore
+  context,
+  next: (url: string) => void
+) {
+  const url = new URL(resolvedUrl);
+
+  if (["http:", "https:"].includes(url.protocol)) {
     try {
       const response = await fetch(url, {
         // timeout defaults to 300 seconds, same as Chrome's default fetch timeout
@@ -91,6 +100,53 @@ export async function load(url: string, _, next: (url: string) => void) {
     }
   }
 
-  // Let Node.js handle all other URLs.
-  return next(url);
+  // We need to check for extensionless bin files manually until Node supports
+  // CJS fallback for ESM loaders. This code is ripped from the below.
+  // @see https://github.com/orgs/nodejs/discussions/41711
+  const ext = extname(url.pathname).slice(1);
+  if (!ext) return loadBin(url, context, next);
+  else if (ext === 'js') {
+    // Check to see if source is ESM or CJS
+    const file = await readFile(url, { encoding: "utf-8" });
+    const {
+      program: { sourceType },
+    } = parser.parse(file, {
+      sourceType: "unambiguous",
+    });
+
+    return {
+      format: sourceType === 'module' ? 'module' : 'commonjs',
+      shortCircuit: true,
+      source: file,
+    };
+  }
+
+  return next(resolvedUrl);
+}
+
+async function loadBin(
+  url: URL,
+  // @ts-ignore
+  context,
+  next: (url: string, context: unknown) => void
+) {
+  const dirs = dirname(url.pathname).split(sep);
+  const parentDir = dirs.at(-1);
+  const nodeModDir = dirs.indexOf("node_modules");
+
+  let format;
+
+  if (parentDir === "bin" && nodeModDir >= 0) {
+    const { type } = await readFile(
+      join("/", ...dirs.slice(0, nodeModDir + 2), "package.json"),
+      { encoding: "utf-8" }
+    ).then(JSON.parse);
+
+    format = type === "module" ? "module" : "commonjs";
+  }
+
+  return next(url.href, {
+    ...context,
+    format,
+  });
 }

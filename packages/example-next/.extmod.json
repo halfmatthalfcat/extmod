@@ -1,0 +1,22 @@
+{
+  "version": "1.0",
+  "aliases": {
+    "component": "http://localhost:3333/react.js"
+  },
+  "policy": {
+    "resources": {
+      "http://localhost:3333/react.js": {
+        "dependencies": {
+          "react/jsx-dev-runtime": "./node_modules/react/jsx-dev-runtime.js"
+        },
+        "integrity": true
+      }
+    },
+    "scopes": {
+      "file:": {
+        "dependencies": true,
+        "integrity": true
+      }
+    }
+  }
+}
