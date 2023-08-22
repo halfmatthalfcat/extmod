@@ -1,7 +1,12 @@
+export const revalidate = 0;
+export const dynamic = "force-dynamic";
+
 export default async function Home() {
   // We need to wrap our import in an eval to avoid mangling/transforming from Webpack
-  const Component = await eval(`import("http://localhost:3333/react.js")`).then(m => m.default);
-  console.log(Component);
+  // @ts-ignore
+  const Component = await eval(`import("http://localhost:3333/react.mjs")`);
 
-  return <div>Hello World</div>;
+  console.log(Component.default.toString());
+
+  return <Component.default />;
 }

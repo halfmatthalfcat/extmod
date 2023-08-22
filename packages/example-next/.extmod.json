@@ -1,20 +1,19 @@
 {
   "version": "1.0",
   "aliases": {
-    "component": "http://localhost:3333/react.js"
+    "component": "http://localhost:3333/react.mjs"
   },
   "policy": {
-    "resources": {
-      "http://localhost:3333/react.js": {
-        "dependencies": {
-          "react/jsx-dev-runtime": "./node_modules/react/jsx-dev-runtime.js"
-        },
-        "integrity": true
-      }
-    },
+    "resources": {},
     "scopes": {
       "file:": {
         "dependencies": true,
+        "integrity": true
+      },
+      "http:": {
+        "dependencies": {
+          "react/jsx-dev-runtime": "/Users/moliver/Code/extmod/node_modules/react/jsx-dev-runtime.js"
+        },
         "integrity": true
       }
     }

@@ -40,6 +40,7 @@ const schema = z.object(
     aliases: z.record(z.string().regex(/^https?/)),
     // Policy directly correlates to Node Module Permission schema
     policy: z.object({
+      dependencies: z.record(z.string(), z.boolean()),
       resources: z.record(
         z.string().regex(/^https?/),
         z.object({

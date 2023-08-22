@@ -1,11 +1,14 @@
 import g from "@babel/generator";
 import * as parser from "@babel/parser";
 import * as t from "@babel/types";
+import TTLCache from "@isaacs/ttlcache";
+import ccp from "cache-control-parser";
 import { getReasonPhrase } from "http-status-codes";
 import { readFile } from "node:fs/promises";
 import { dirname, extname, join, sep } from "node:path";
 import { EXTMOD_ERROR, EXTMOD_ERROR_CODE, EXTMOD_ERROR_REASON } from ".";
 import { ExtModErrorCodes, ExtModErrorReasons } from "./index";
+const { parse: ccParse } = ccp;
 // @ts-ignore: babel .d.ts is wrong
 // @see: https://github.com/babel/babel/issues/15269
 const { default: generate } = g;
@@ -30,6 +33,52 @@ const buildError = (code: number, reason: string) =>
       ])
     )
   ).code;
+
+const ttlCacheMap = new TTLCache<string, number>();
+
+export async function resolve(
+  specifier: string,
+  context: any,
+  next: (specifier: string) => void
+) {
+  if (/^http?/.test(specifier)) {
+    const url = new URL(specifier);
+    try {
+      const response = await fetch(specifier, {
+        signal: AbortSignal.timeout(300 * 1000),
+        method: "HEAD",
+      });
+
+      const etag = response.headers.get("etag");
+      const cc = response.headers.get("cache-control");
+
+      const existingTtl = ttlCacheMap.get(specifier);
+
+      if (etag) {
+        url.searchParams.set("__extmod_etag", etag);
+        return next(url.href);
+      }
+
+      if (existingTtl != null) {
+        url.searchParams.set("__extmod_ttl", existingTtl.toString());
+        return next(url.href);
+      }
+
+      if (cc) {
+        const { "max-age": maxAge } = ccParse(cc);
+
+        if (maxAge != null && maxAge !== 0) {
+          const insertionTime = Date.now();
+          ttlCacheMap.set(specifier, insertionTime, { ttl: maxAge * 1000 });
+          url.searchParams.set("__extmod_ttl", insertionTime.toString());
+          return next(url.href);
+        }
+      }
+    } catch {}
+  }
+
+  return next(`${specifier}?t=${Date.now()}`);
+}
 
 export async function load(
   resolvedUrl: string,
@@ -78,6 +127,7 @@ export async function load(
         source: text,
       };
     } catch (ex) {
+      console.log(ex);
       if (ex.name === "AbortError") {
         return {
           format: "module",
@@ -101,11 +151,11 @@ export async function load(
   }
 
   // We need to check for extensionless bin files manually until Node supports
-  // CJS fallback for ESM loaders. This code is ripped from the below.
+  // CJS fallback for ESM loaders. This code is ripped from the below, with some modifications.
   // @see https://github.com/orgs/nodejs/discussions/41711
   const ext = extname(url.pathname).slice(1);
   if (!ext) return loadBin(url, context, next);
-  else if (ext === 'js') {
+  else if (["js", "mjs"].includes(ext)) {
     // Check to see if source is ESM or CJS
     const file = await readFile(url, { encoding: "utf-8" });
     const {
@@ -115,7 +165,7 @@ export async function load(
     });
 
     return {
-      format: sourceType === 'module' ? 'module' : 'commonjs',
+      format: sourceType === "module" ? "module" : "commonjs",
       shortCircuit: true,
       source: file,
     };
