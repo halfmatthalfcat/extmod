@@ -1,4 +1,7 @@
-import generate from "@babel/generator";
+import g from "@babel/generator";
+// @ts-ignore: babel .d.ts is wrong
+// @see: https://github.com/babel/babel/issues/15269
+const { default: generate } = g;
 import * as parser from "@babel/parser";
 import * as t from "@babel/types";
 import { getReasonPhrase } from "http-status-codes";

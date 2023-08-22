@@ -76,6 +76,7 @@ const program = new Command()
 
       config.policy.resources[remoteUrl] = {
         dependencies: true,
+        integrity: true,
       };
 
       if (alias) {

@@ -3,7 +3,8 @@
   "private": true,
   "version": "0.0.0",
   "scripts": {
-    "start": "node --experimental-policy=./policy.json --experimental-loader=../../node_modules/@extmod/core/dist/loader.mjs ./dist/index.mjs",
+    "start": "extmod run ./dist/index.mjs",
+    "init": "extmod init",
     "build": "tsup"
   },
   "devDependencies": {

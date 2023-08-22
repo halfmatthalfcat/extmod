@@ -11,6 +11,7 @@ const config1_0: ExtmodConfig = {
     scopes: {
       "file:": {
         dependencies: true,
+        integrity: true,
       },
     },
   },

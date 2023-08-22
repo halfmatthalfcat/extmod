@@ -44,12 +44,16 @@ const schema = z.object(
         // z.string().regex(/^https?/),
         z.object({
           dependencies: z.boolean(),
-          integrity: z.string().optional(),
+          integrity: z.union([
+            z.string(),
+            z.boolean()
+          ]).optional(),
         })
       ),
       scopes: z.record(
         z.object({
           dependencies: z.boolean(),
+          integrity: z.boolean(),
         })
       ),
     }),

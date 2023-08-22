@@ -2,11 +2,14 @@
   "name": "@extmod/core",
   "version": "0.0.0",
   "license": "MIT",
-  "main": "dist/index.js",
   "type": "module",
+  "main": "dist/index.mjs",
+  "bin": {
+    "extmod": "dist/cli/index.mjs"
+  },
   "exports": {
-    ".": "./dist/index.js",
-    "./cli": "./dist/cli/index.js",
+    ".": "./dist/index.mjs",
+    "./cli": "./dist/cli/index.mjs",
     "./loader": "./dist/loader.mjs"
   },
   "engines": {
@@ -29,6 +32,7 @@
   },
   "devDependencies": {
     "@types/babel__generator": "^7.6.4",
+    "concurrently": "^8.2.0",
     "tsup": "^7.2.0",
     "typescript": "^5.1.6"
   }
