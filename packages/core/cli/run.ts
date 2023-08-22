@@ -2,7 +2,7 @@ import { ExtmodConfig, validate } from "@/schema";
 import { Command } from "@commander-js/extra-typings";
 import { resolve } from "import-meta-resolve";
 import { spawn } from "node:child_process";
-import { readFile, stat, writeFile } from "node:fs/promises";
+import { readFile, stat, writeFile, unlink } from "node:fs/promises";
 import { temporaryFile } from "tempy";
 
 // @ts-ignore
@@ -99,6 +99,8 @@ const program = new Command()
 
         p.on("error", reject);
       });
+
+      await unlink(tempConfig);
     } catch (err) {
       return program.error(
         `An error occurred loading config file at ${path}: ${

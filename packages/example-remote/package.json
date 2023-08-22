@@ -3,7 +3,7 @@
   "private": true,
   "version": "0.0.0",
   "scripts": {
-    "start": "conc 'tsup --watch' 'serve -l 8080'"
+    "start": "conc 'tsup --watch' 'serve -l 3333'"
   },
   "devDependencies": {
     "concurrently": "^8.2.0",
