@@ -4,6 +4,7 @@ import * as t from "@babel/types";
 import TTLCache from "@isaacs/ttlcache";
 import ccp from "cache-control-parser";
 import { getReasonPhrase } from "http-status-codes";
+import { resolve as imr } from "import-meta-resolve";
 import { readFile } from "node:fs/promises";
 import { dirname, extname, join, sep } from "node:path";
 import { EXTMOD_ERROR, EXTMOD_ERROR_CODE, EXTMOD_ERROR_REASON } from ".";
@@ -39,7 +40,7 @@ const ttlCacheMap = new TTLCache<string, number>();
 export async function resolve(
   specifier: string,
   context: any,
-  next: (specifier: string) => void
+  next: (specifier: string, context: any) => void
 ) {
   if (/^http?/.test(specifier)) {
     const url = new URL(specifier);
@@ -56,12 +57,18 @@ export async function resolve(
 
       if (etag) {
         url.searchParams.set("__extmod_etag", etag);
-        return next(url.href);
+        return {
+          url: url.href,
+          shortCircuit: true,
+        };
       }
 
       if (existingTtl != null) {
         url.searchParams.set("__extmod_ttl", existingTtl.toString());
-        return next(url.href);
+        return {
+          url: url.href,
+          shortCircuit: true,
+        };
       }
 
       if (cc) {
@@ -71,19 +78,35 @@ export async function resolve(
           const insertionTime = Date.now();
           ttlCacheMap.set(specifier, insertionTime, { ttl: maxAge * 1000 });
           url.searchParams.set("__extmod_ttl", insertionTime.toString());
-          return next(url.href);
+          return {
+            url: url.href,
+            shortCircuit: true,
+          };
         }
+      }
+    } catch {}
+    // If this is a bare module specifier, try to resolve the full path
+  } else if (!/.+:/.test(specifier)) {
+    try {
+      // @ts-ignore
+      const modulePath = imr(specifier, import.meta.url);
+
+      if (modulePath) {
+        // @ts-ignore
+        return {
+          url: modulePath,
+          shortCircuit: true,
+        };
       }
     } catch {}
   }
 
-  return next(`${specifier}?t=${Date.now()}`);
+  return next(specifier, context);
 }
 
 export async function load(
   resolvedUrl: string,
-  // @ts-ignore
-  context,
+  context: any,
   next: (url: string) => void
 ) {
   const url = new URL(resolvedUrl);
@@ -127,7 +150,6 @@ export async function load(
         source: text,
       };
     } catch (ex) {
-      console.log(ex);
       if (ex.name === "AbortError") {
         return {
           format: "module",

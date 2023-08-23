@@ -4,16 +4,13 @@
     "component": "http://localhost:3333/react.mjs"
   },
   "policy": {
-    "resources": {},
     "scopes": {
       "file:": {
         "dependencies": true,
         "integrity": true
       },
-      "http:": {
-        "dependencies": {
-          "react/jsx-dev-runtime": "/Users/moliver/Code/extmod/node_modules/react/jsx-dev-runtime.js"
-        },
+      "http://localhost:3333/": {
+        "dependencies": true,
         "integrity": true
       }
     }
