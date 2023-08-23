@@ -20,7 +20,11 @@ const program = new Command()
     "The path to an existing .extmod.json config file.",
     `${process.cwd()}/.extmod.json`
   )
-  .action(async (command, { path }) => {
+  .option(
+    "--ignoreWarnings",
+    "Node emits warnings about using experimental features. Use this flag to disable them."
+  )
+  .action(async (command, { path, ignoreWarnings }) => {
     try {
       await stat(path);
     } catch {
@@ -68,9 +72,9 @@ const program = new Command()
       // Try to resolve the bin path
       if (!isLocalFile) {
         try {
-          // @ts-ignore
           const modPkgJsonPath = resolve(
             `${c}/package.json`,
+            // @ts-ignore
             import.meta.url
           ).replace("file://", "");
           const modPkgJson = await readFile(modPkgJsonPath, {
@@ -92,18 +96,12 @@ const program = new Command()
         }
       }
 
-      console.log("node", [
-        `--experimental-policy=${tempConfig}`,
-        `--experimental-loader=${loader}`,
-        c,
-        ...rest,
-      ]);
-
       const p = spawn(
         "node",
         [
           `--experimental-policy=${tempConfig}`,
           `--experimental-loader=${loader}`,
+          ...(ignoreWarnings ? ["--no-warnings"] : []),
           c,
           ...rest,
         ],
