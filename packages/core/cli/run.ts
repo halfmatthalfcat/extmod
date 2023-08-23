@@ -2,7 +2,8 @@ import { ExtmodConfig, validate } from "@/schema";
 import { Command } from "@commander-js/extra-typings";
 import { resolve } from "import-meta-resolve";
 import { spawn } from "node:child_process";
-import { readFile, stat, writeFile, unlink } from "node:fs/promises";
+import { readFile, stat, unlink, writeFile } from "node:fs/promises";
+import { join } from "node:path";
 import { temporaryFile } from "tempy";
 
 // @ts-ignore
@@ -45,35 +46,58 @@ const program = new Command()
 
       try {
         // @ts-ignore
-       loader = resolve("@extmod/core/loader", import.meta.url).replace(
+        loader = resolve("@extmod/core/loader", import.meta.url).replace(
           "file://",
           ""
-        )
+        );
       } catch {
-        return program.error(`Unable to find @extmod/core/loader, terminating.`);
+        return program.error(
+          `Unable to find @extmod/core/loader, terminating.`
+        );
       }
 
       const tempConfig = temporaryFile({ extension: "json" });
       await writeFile(tempConfig, JSON.stringify(config.policy, null, 2));
 
-      let [ c, ...rest ] = command;
+      let [c, ...rest] = command;
 
       const isLocalFile = await stat(`${process.cwd()}/${c}`)
         .catch(() => false)
-        .then(() => true);
+        .then((f) => !!f);
 
       // Try to resolve the bin path
       if (!isLocalFile) {
         try {
           // @ts-ignore
-          c = resolve(c, import.meta.url).replace(
-            "file://",
-            ""
-          );
+          const modPkgJsonPath = resolve(
+            `${c}/package.json`,
+            import.meta.url
+          ).replace("file://", "");
+          const modPkgJson = await readFile(modPkgJsonPath, {
+            encoding: "utf-8",
+          });
+          const { bin } = JSON.parse(modPkgJson);
+
+          if (c in bin) {
+            c = join("/", ...modPkgJsonPath.split("/").slice(0, -1), bin[c]);
+          } else {
+            return program.error(
+              `Could not resolve ${command[0]} as a local file or node executable, terminating.`
+            );
+          }
         } catch {
-          return program.error(`Could not resolve ${c} as a local file or node executable, terminating.`);
+          return program.error(
+            `Could not resolve ${command[0]} as a local file or node executable, terminating.`
+          );
         }
       }
+
+      console.log("node", [
+        `--experimental-policy=${tempConfig}`,
+        `--experimental-loader=${loader}`,
+        c,
+        ...rest,
+      ]);
 
       const p = spawn(
         "node",

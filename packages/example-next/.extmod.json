@@ -1,0 +1,18 @@
+{
+  "version": "1.0",
+  "aliases": {
+    "component": "http://localhost:3333/react.mjs"
+  },
+  "policy": {
+    "scopes": {
+      "file:": {
+        "dependencies": true,
+        "integrity": true
+      },
+      "http://localhost:3333/": {
+        "dependencies": true,
+        "integrity": true
+      }
+    }
+  }
+}

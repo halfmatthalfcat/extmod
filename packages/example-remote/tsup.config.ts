@@ -1,7 +1,9 @@
-import { defineConfig } from 'tsup';
+import { defineConfig } from "tsup";
 
 export default defineConfig({
-  entry: ['index.ts'],
-  outDir: 'out',
-  format: ['esm', 'cjs'],
+  entry: ["index.ts", "react.tsx"],
+  outDir: "out",
+  format: ["esm", "cjs"],
+  splitting: false,
+  external: ['react']
 });
