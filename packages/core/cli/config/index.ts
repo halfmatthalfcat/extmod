@@ -1,7 +1,8 @@
 import { Command } from "@commander-js/extra-typings";
 
-import add from "./add";
-import remove from "./remove";
+import add from "./add-remote";
+import remove from "./remove-remote";
+import update from "./update-remote";
 
 export default new Command()
   .name("config")
@@ -11,4 +12,5 @@ export default new Command()
   )
   .addCommand(add)
   .addCommand(remove)
+  .addCommand(update)
   .showHelpAfterError();

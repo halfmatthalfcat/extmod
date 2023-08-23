@@ -4,6 +4,7 @@
     "component": "http://localhost:3333/react.mjs"
   },
   "policy": {
+    "resources": {},
     "scopes": {
       "file:": {
         "dependencies": true,

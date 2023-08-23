@@ -1,17 +1,18 @@
 import { ExtmodConfig, validate } from "@/schema";
 import { Command } from "@commander-js/extra-typings";
 import { readFile, stat, writeFile } from "node:fs/promises";
+import { extname } from "node:path";
 
 // @ts-ignore
 const program = new Command()
-  .name("remove")
+  .name("remove-remote")
   .description(
-    "Remove a remote module from an existing .extmod.json configuration file."
+    "Remove a remote module or directory from an existing .extmod.json configuration file."
   )
   .summary("Remove a remote module")
   .argument(
     "<remoteUrlOrAlias>",
-    "The remote module's fully-qualified URL or a valid alias."
+    "The remote module or directory's fully-qualified URL or a valid alias."
   )
   .option(
     "-p, --path <path>",
@@ -40,25 +41,27 @@ const program = new Command()
         );
       }
 
-      if (remoteUrlOrAlias in config.policy.resources) {
-        delete config.policy.resources[remoteUrlOrAlias];
-
-        for (const [alias, resource] of Object.entries(config.aliases)) {
-          if (resource === remoteUrlOrAlias) {
-            delete config.aliases[alias];
-          }
-        }
-      } else if (
+      if (
         Object.keys(config.aliases).some((alias) => alias === remoteUrlOrAlias)
       ) {
         const resource = config.aliases[remoteUrlOrAlias];
 
         delete config.aliases[remoteUrlOrAlias];
         delete config.policy.resources[resource];
+        delete config.policy.scopes[resource];
       } else {
-        return program.error(
-          `Could not find any URL or alias matching ${remoteUrlOrAlias}`
-        );
+        remoteUrlOrAlias = extname(remoteUrlOrAlias).slice(1)
+          ? remoteUrlOrAlias
+          : `${remoteUrlOrAlias}/`;
+
+        delete config.policy.resources[remoteUrlOrAlias];
+        delete config.policy.scopes[remoteUrlOrAlias];
+
+        for (const [alias, resource] of Object.entries(config.aliases)) {
+          if (resource === remoteUrlOrAlias) {
+            delete config.aliases[alias];
+          }
+        }
       }
 
       await writeFile(path, JSON.stringify(config, null, 2));

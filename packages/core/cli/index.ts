@@ -6,6 +6,7 @@ const program = new Command();
 
 import config from "./config";
 import init from "./init";
+import ls from "./ls";
 import run from "./run";
 
 program
@@ -15,6 +16,7 @@ program
   )
   .version(version)
   .addCommand(init)
+  .addCommand(ls)
   .addCommand(config)
   .addCommand(run);
 
