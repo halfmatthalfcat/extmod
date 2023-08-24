@@ -1,7 +1,7 @@
 import { defineConfig } from "tsup";
 
 export default defineConfig({
-  entry: ["index.ts", "loader.ts", "./cli/index.ts"],
+  entry: ["index.ts", "./loader/index.ts", "./cli/index.ts"],
   outDir: "dist",
   format: ["esm"],
   target: "esnext",

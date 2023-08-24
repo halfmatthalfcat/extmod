@@ -5,7 +5,7 @@
   "type": "module",
 
   "scripts": {
-    "dev": "extmod run --ignoreWarnings next dev",
+    "dev": "extmod run --ignoreWarnings -ll debug next dev",
     "build": "extmod run next build",
     "start": "extmod run next start",
     "lint": "next lint"
