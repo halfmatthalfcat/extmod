@@ -53,7 +53,7 @@ export async function load(
       logger.warn(
         `Recieved error ${errorCode} from resolver for ${resolvedUrl}`,
         {
-          fs: "loader",
+          fn: "loader",
         }
       );
 
@@ -122,7 +122,26 @@ export async function load(
           return {
             format: "module",
             shortCircuit: true,
-            source: buildError(ExtModInternalError.LOADER_TIMEOUT),
+            source: buildError(ExtModInternalError.LOADER_FETCH_TIMEOUT),
+          };
+        } else if (
+          ex instanceof Error &&
+          ["TypeError", "SystemError"].includes(ex.name)
+        ) {
+          logger.error(
+            `Caught fetch error resolving ${resolvedUrl}: ${
+              (ex as unknown as any).code ??
+              (ex as unknown as any).cause?.code ??
+              ex.message
+            }`,
+            {
+              fn: "loader",
+            }
+          );
+          return {
+            format: "module",
+            shortCircuit: true,
+            source: buildError(ExtModInternalError.LOADER_FETCH_ERROR),
           };
         } else if (ex instanceof Error) {
           logger.error(

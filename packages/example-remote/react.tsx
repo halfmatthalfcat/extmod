@@ -1,1 +1,3 @@
-export default () => <div>Its working 3</div>;
+import Remote from "http://localhost:3332/react.mjs";
+console.log(Remote)
+export default () => <Remote.default />;

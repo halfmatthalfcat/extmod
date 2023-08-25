@@ -75,16 +75,22 @@ const HttpStatusCodes = {
 
 export const ExtModInternalError = {
   EXPECTED_ESM_FOUND_CJS: -1,
-  RESOLVER_TIMEOUT: -2,
-  LOADER_TIMEOUT: -3,
-  RESOLVER_CRITERIA_UNMET: -4,
+  RESOLVER_FETCH_TIMEOUT: -2,
+  LOADER_FETCH_TIMEOUT: -3,
+  RESOLVER_FETCH_ERROR: -4,
+  LOADER_FETCH_ERROR: -5,
+  RESOLVER_CRITERIA_UNMET: -6,
   UNEXPECTED_ERROR: -99,
 } as const;
 
 export const ExtModInternalErrorCodes = {
   [ExtModInternalError.EXPECTED_ESM_FOUND_CJS]: "Expected ESM but found CJS",
-  [ExtModInternalError.RESOLVER_TIMEOUT]: "Resolving module timed out",
-  [ExtModInternalError.LOADER_TIMEOUT]: "Loading module timed out",
+  [ExtModInternalError.RESOLVER_FETCH_TIMEOUT]: "Resolving module timed out",
+  [ExtModInternalError.LOADER_FETCH_TIMEOUT]: "Loading module timed out",
+  [ExtModInternalError.RESOLVER_FETCH_ERROR]:
+    "Resolving module failed (e.g. networking, malformed url; see error logs)",
+  [ExtModInternalError.LOADER_FETCH_ERROR]:
+    "Loading module failed (e.g. networking, malformed url; see error logs)",
   [ExtModInternalError.RESOLVER_CRITERIA_UNMET]:
     "Resolving module did not met established criteria",
   [ExtModInternalError.UNEXPECTED_ERROR]:

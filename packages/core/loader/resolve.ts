@@ -114,14 +114,22 @@ export async function resolve(
             fn: "resolver",
           }
         );
-        errorCode = ExtModInternalError.RESOLVER_TIMEOUT;
-      } else if (ex instanceof Error) {
+        errorCode = ExtModInternalError.RESOLVER_FETCH_TIMEOUT;
+      } else if (
+        ex instanceof Error &&
+        ["TypeError", "SystemError"].includes(ex.name)
+      ) {
         logger.error(
-          `Caught unexpected error resolving ${specifier}: ${ex.message}`,
+          `Caught fetch error resolving ${specifier}: ${
+            (ex as unknown as any).code ??
+            (ex as unknown as any).cause?.code ??
+            ex.message
+          }`,
           {
             fn: "resolver",
           }
         );
+        errorCode = ExtModInternalError.RESOLVER_FETCH_ERROR;
       } else {
         logger.error(`Caught unexpected error resolving ${specifier}`, {
           fn: "resolver",
