@@ -1,4 +1,4 @@
-import { ExtmodConfig, validate } from "@/schema";
+import { ExtmodConfig, validate } from "@/util/schema";
 import { Command, InvalidArgumentError } from "@commander-js/extra-typings";
 import { readFile, stat, writeFile } from "node:fs/promises";
 import { extname } from "node:path";

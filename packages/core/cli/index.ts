@@ -8,6 +8,7 @@ import config from "./config";
 import init from "./init";
 import ls from "./ls";
 import run from "./run";
+import validate from "./validate";
 
 program
   .name("extmod")
@@ -18,6 +19,7 @@ program
   .addCommand(init)
   .addCommand(ls)
   .addCommand(config)
-  .addCommand(run);
+  .addCommand(run)
+  .addCommand(validate);
 
 await program.parseAsync();

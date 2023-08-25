@@ -1,4 +1,4 @@
-import { ExtmodConfig, validate } from "@/schema";
+import { ExtmodConfig, validate } from "@/util/schema";
 import {
   Command,
   InvalidOptionArgumentError,

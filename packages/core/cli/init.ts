@@ -1,7 +1,7 @@
+import { ExtmodConfig } from "@/util/schema";
 import { Command } from "@commander-js/extra-typings";
 import { stat, writeFile } from "node:fs/promises";
 import { join } from "node:path";
-import { ExtmodConfig } from "@/schema";
 
 const config1_0: ExtmodConfig = {
   version: "1.0",
