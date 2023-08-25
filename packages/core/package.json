@@ -4,6 +4,7 @@
   "license": "MIT",
   "type": "module",
   "main": "dist/index.mjs",
+  "types": "dist/index.d.ts",
   "bin": {
     "extmod": "dist/cli/index.mjs"
   },

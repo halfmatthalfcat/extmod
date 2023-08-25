@@ -3,8 +3,9 @@ import {
   EXTMOD_ERROR_CODE,
   EXTMOD_ERROR_REASON,
   ExtModErrorCodes,
+  ExtModInternalError,
   getErrorReasonFromCode,
-} from "@/.";
+} from "@/util/error";
 import g from "@babel/generator";
 import * as parser from "@babel/parser";
 import * as t from "@babel/types";
@@ -17,7 +18,7 @@ import { extmodUrl, time } from "./util";
 // @see: https://github.com/babel/babel/issues/15269
 const { default: generate } = g;
 
-const buildError = (code: number) =>
+const buildError = (code: keyof typeof ExtModErrorCodes) =>
   generate(
     t.exportDefaultDeclaration(
       t.objectExpression([
@@ -59,7 +60,7 @@ export async function load(
       return {
         format: "module",
         shortCircuit: true,
-        source: buildError(errorCode),
+        source: buildError(errorCode as keyof typeof ExtModErrorCodes),
       };
     } else {
       try {
@@ -81,7 +82,9 @@ export async function load(
           return {
             format: "module",
             shortCircuit: true,
-            source: buildError(response.status),
+            source: buildError(
+              response.status as keyof typeof ExtModErrorCodes
+            ),
           };
         }
 
@@ -99,7 +102,7 @@ export async function load(
           return {
             format: "module",
             shortCircuit: true,
-            source: buildError(ExtModErrorCodes.EXPECTED_ESM_FOUND_CJS),
+            source: buildError(ExtModInternalError.EXPECTED_ESM_FOUND_CJS),
           };
         }
 
@@ -119,7 +122,7 @@ export async function load(
           return {
             format: "module",
             shortCircuit: true,
-            source: buildError(ExtModErrorCodes.LOADER_TIMEOUT),
+            source: buildError(ExtModInternalError.LOADER_TIMEOUT),
           };
         } else if (ex instanceof Error) {
           logger.error(
@@ -137,7 +140,7 @@ export async function load(
         return {
           format: "module",
           shortCircuit: true,
-          source: buildError(ExtModErrorCodes.UNEXPECTED_ERROR),
+          source: buildError(ExtModInternalError.UNEXPECTED_ERROR),
         };
       }
     }

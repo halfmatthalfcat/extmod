@@ -1,4 +1,4 @@
-import { ExtModErrorCodes } from "@/.";
+import { ExtModInternalError } from "@/util/error";
 import TTLCache from "@isaacs/ttlcache";
 import ccp from "cache-control-parser";
 import { resolve as imr } from "import-meta-resolve";
@@ -114,7 +114,7 @@ export async function resolve(
             fn: "resolver",
           }
         );
-        errorCode = ExtModErrorCodes.RESOLVER_TIMEOUT;
+        errorCode = ExtModInternalError.RESOLVER_TIMEOUT;
       } else if (ex instanceof Error) {
         logger.error(
           `Caught unexpected error resolving ${specifier}: ${ex.message}`,
@@ -128,7 +128,7 @@ export async function resolve(
         });
       }
 
-      errorCode ??= ExtModErrorCodes.UNEXPECTED_ERROR;
+      errorCode ??= ExtModInternalError.UNEXPECTED_ERROR;
     }
 
     if (existingEtag) {
@@ -156,7 +156,7 @@ export async function resolve(
       );
       url.searchParams.set(
         EXTMOD_RESOLVE_ERROR_PARAM,
-        ExtModErrorCodes.RESOLVER_CRITERIA_UNMET.toString()
+        ExtModInternalError.RESOLVER_CRITERIA_UNMET.toString()
       );
     }
 
@@ -166,9 +166,16 @@ export async function resolve(
     };
     // If this is a bare module specifier, try to resolve the full path
   } else if (!/.+:/.test(specifier)) {
+    logger.debug(`Got bare specifier ${specifier}, searching locally`, {
+      fn: "resolver",
+    });
     try {
       // @ts-ignore
       const modulePath = imr(specifier, import.meta.url);
+
+      logger.debug(`Found local path for bare ${specifier} at ${modulePath}`, {
+        fn: "resolver",
+      });
 
       if (modulePath) {
         // @ts-ignore
@@ -179,6 +186,10 @@ export async function resolve(
       }
     } catch {}
   }
+
+  logger.debug(`Continuing resolve chain for ${specifier}`, {
+    fn: "resolver",
+  });
 
   return next(specifier, context);
 }

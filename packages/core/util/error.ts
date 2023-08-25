@@ -1,0 +1,111 @@
+export const EXTMOD_ERROR = "__EXTMOD_ERROR";
+export const EXTMOD_ERROR_CODE = "code";
+export const EXTMOD_ERROR_REASON = "reason";
+
+const HttpStatusCodes = {
+  100: "Continue",
+  101: "Switching Protocols",
+  102: "Processing",
+  200: "OK",
+  201: "Created",
+  202: "Accepted",
+  203: "Non-Authoritative Information",
+  204: "No Content",
+  205: "Reset Content",
+  206: "Partial Content",
+  207: "Multi-Status",
+  208: "Already Reported",
+  226: "IM Used",
+  300: "Multiple Choices",
+  301: "Moved Permanently",
+  302: "Found",
+  303: "See Other",
+  304: "Not Modified",
+  305: "Use Proxy",
+  306: "Switch Proxy",
+  307: "Temporary Redirect",
+  308: "Permanent Redirect",
+  400: "Bad Request",
+  401: "Unauthorized",
+  402: "Payment Required",
+  403: "Forbidden",
+  404: "Not Found",
+  405: "Method Not Allowed",
+  406: "Not Acceptable",
+  407: "Proxy Authentication Required",
+  408: "Request Timeout",
+  409: "Conflict",
+  410: "Gone",
+  411: "Length Required",
+  412: "Precondition Failed",
+  413: "Request Entity Too Large",
+  414: "Request-URI Too Long",
+  415: "Unsupported Media Type",
+  416: "Requested Range Not Satisfiable",
+  417: "Expectation Failed",
+  418: "I'm a teapot",
+  420: "Enhance Your Calm",
+  421: "Misdirected Request",
+  422: "Unprocessable Entity",
+  423: "Locked",
+  424: "Failed Dependency",
+  425: "Unordered Collection",
+  426: "Upgrade Required",
+  428: "Precondition Required",
+  429: "Too Many Requests",
+  431: "Request Header Fields Too Large",
+  444: "No Response",
+  449: "Retry With",
+  450: "Blocked by Windows Parental Controls",
+  451: "Unavailable For Legal Reasons",
+  499: "Client Closed Request",
+  500: "Internal Server Error",
+  501: "Not Implemented",
+  502: "Bad Gateway",
+  503: "Service Unavailable",
+  504: "Gateway Timeout",
+  505: "HTTP Version Not Supported",
+  506: "Variant Also Negotiates",
+  507: "Insufficient Storage",
+  508: "Loop Detected",
+  509: "Bandwidth Limit Exceeded",
+  510: "Not Extended",
+  511: "Network Authentication Required",
+} as const;
+
+export const ExtModInternalError = {
+  EXPECTED_ESM_FOUND_CJS: -1,
+  RESOLVER_TIMEOUT: -2,
+  LOADER_TIMEOUT: -3,
+  RESOLVER_CRITERIA_UNMET: -4,
+  UNEXPECTED_ERROR: -99,
+} as const;
+
+export const ExtModInternalErrorCodes = {
+  [ExtModInternalError.EXPECTED_ESM_FOUND_CJS]: "Expected ESM but found CJS",
+  [ExtModInternalError.RESOLVER_TIMEOUT]: "Resolving module timed out",
+  [ExtModInternalError.LOADER_TIMEOUT]: "Loading module timed out",
+  [ExtModInternalError.RESOLVER_CRITERIA_UNMET]:
+    "Resolving module did not met established criteria",
+  [ExtModInternalError.UNEXPECTED_ERROR]:
+    "Remote module loading encountered an unexpected error",
+} as const;
+
+export const ExtModErrorCodes = {
+  ...ExtModInternalErrorCodes,
+  ...HttpStatusCodes,
+} as const;
+
+export const getErrorReasonFromCode = (code: keyof typeof ExtModErrorCodes) => {
+  if (code > 0) {
+    return (
+      HttpStatusCodes[code as keyof typeof HttpStatusCodes] ??
+      "Unknown HTTP Code"
+    );
+  } else {
+    return (
+      ExtModInternalErrorCodes[code as keyof typeof ExtModInternalErrorCodes] ??
+      "Unknown Loader Code"
+    );
+  }
+};
