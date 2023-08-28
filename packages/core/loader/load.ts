@@ -9,12 +9,12 @@ import {
 import g from "@babel/generator";
 import * as parser from "@babel/parser";
 import * as t from "@babel/types";
-import { readFile, writeFile } from "node:fs/promises";
+import { readFile } from "node:fs/promises";
 import { dirname, extname, join, sep } from "node:path";
 import config from "./config";
 import logger from "./log";
 import { ExtmodUrl } from "./url";
-import { time } from "./util";
+import { time, writeFile } from "./util";
 // @ts-ignore: babel .d.ts is wrong
 // @see: https://github.com/babel/babel/issues/15269
 const { default: generate } = g;
@@ -42,12 +42,18 @@ const buildError = (code: keyof typeof ExtmodErrorCodes) =>
     )
   ).code;
 
+interface LoadNext {
+  source: string;
+  format?: string;
+  shortCircuit?: boolean;
+  responseURL?: string;
+}
+
 const load = async (
   _resolvedUrl: string,
   context: { importAssertions: { type?: string } } = { importAssertions: {} },
-  next: (url: string) => Promise<object>
-): Promise<object> => {
-  console.log(context);
+  next: (url: string, context: any) => Promise<LoadNext>
+): Promise<LoadNext> => {
   const url = new ExtmodUrl(_resolvedUrl);
   const resolvedUrl = url.toOG().href;
 
@@ -112,12 +118,16 @@ const load = async (
           };
         }
 
-        if (
-          context.importAssertions.type === "client" &&
-          directives.every((d) => d.value.value !== "use client")
-        ) {
+        const isUseClient = directives.some(
+          (d) => d.value.value !== "use client"
+        );
+        const assertUseClient = context.importAssertions.type === "client";
+
+        if (isUseClient || assertUseClient) {
           logger.debug(
-            `Resource ${resolvedUrl} imported with client assertion`,
+            `Resource ${resolvedUrl} imported with client ${
+              isUseClient ? "intention" : "assertion"
+            }`,
             {
               fn: "loader",
             }
@@ -125,10 +135,49 @@ const load = async (
 
           program = {
             ...program,
-            directives: [
-              ...program.directives,
-              t.directive(t.directiveLiteral("use client")),
-            ],
+            directives: isUseClient
+              ? directives
+              : [...directives, t.directive(t.directiveLiteral("use client"))],
+          };
+
+          let path = join(process.cwd(), config.EXTMOD_CACHE_DIR, url.pathname);
+          const ext = extname(path);
+          if (!ext || !["js", "mjs"].includes(ext)) {
+            path = join(path, "index.mjs");
+          }
+
+          const code = generate(program, {
+            importAttributesKeyword: "assert",
+          }).code;
+
+          await writeFile(path, code);
+
+          const localFile = ExtmodUrl.withProtocol("file://", path).href;
+
+          console.log(`Resolving ${localFile}`)
+
+          const i = await load(localFile, context, next);
+
+          console.log({ i });
+
+          const { source } = await next(localFile, {
+            ...context,
+            format: "module",
+            importAssertions: {},
+          });
+
+          logger.debug(
+            `Finished loading ${resolvedUrl} on local file ${localFile}`,
+            {
+              fn: "loader",
+            }
+          );
+
+          return {
+            format: "module",
+            shortCircuit: true,
+            source,
+            responseURL: url.href,
           };
         }
 
@@ -218,14 +267,14 @@ const load = async (
     };
   }
 
-  return next(resolvedUrl);
+  return next(resolvedUrl, context);
 };
 
 async function loadBin(
   url: URL,
   // @ts-ignore
   context,
-  next: (url: string, context: unknown) => Promise<object>
+  next: (url: string, context: unknown) => Promise<LoadNext>
 ) {
   const dirs = dirname(url.pathname).split(sep);
   const parentDir = dirs.at(-1);

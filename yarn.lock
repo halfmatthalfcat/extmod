@@ -5481,6 +5481,11 @@ typescript@^5.1.6:
   resolved "https://registry.npmjs.org/typescript/-/typescript-5.2.2.tgz"
   integrity sha512-mI4WrpHsbCIcwT9cF4FZvr80QUeKvsUsUvKDoR+X/7XHQH98xYD8YHZg7ANtz2GtZt/CBq2QJ0thkGJMHfqc1w==
 
+typings-esm-loader@^2.0.1:
+  version "2.0.1"
+  resolved "https://registry.yarnpkg.com/typings-esm-loader/-/typings-esm-loader-2.0.1.tgz#06066999b17daf5b73fe5c2c01a1fe6365753867"
+  integrity sha512-e4wYqM+JfduJVX/lmRSmIKwvrjeuFrgqWKTk7OtO5T9gTpFsGM9W7iDQIQsZnb9FtEaTn6E2ykr6TdsXwF0uvA==
+
 uglify-js@^3.1.4:
   version "3.17.4"
   resolved "https://registry.npmjs.org/uglify-js/-/uglify-js-3.17.4.tgz"

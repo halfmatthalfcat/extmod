@@ -3,7 +3,6 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-
   "scripts": {
     "dev": "extmod run --ignoreWarnings -ll debug next dev",
     "build": "extmod run next build",

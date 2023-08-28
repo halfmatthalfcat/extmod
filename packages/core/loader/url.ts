@@ -1,9 +1,18 @@
 import { ExtmodErrorCodes } from "@/util/error";
+import { join } from "node:path";
+import type { TupleTail } from "./util";
 
 export class ExtmodUrl extends URL {
   static ERROR_PARAM = "__extmod_error";
   static ETAG_PARAM = "__extmod_etag";
   static TTL_PARAM = "__extmod_ttl";
+  static CLIENT_PARAM = "__extmod_client";
+
+  static withProtocol = (
+    protocol: string,
+    path: string,
+    ...rest: TupleTail<ConstructorParameters<typeof URL>>
+  ) => new ExtmodUrl(join(protocol, path), ...rest);
 
   constructor(...url: ConstructorParameters<typeof URL>) {
     super(...url);
@@ -44,11 +53,27 @@ export class ExtmodUrl extends URL {
     return this.searchParams.get(ExtmodUrl.TTL_PARAM) as string;
   }
 
+  setClient(isClient: boolean): this {
+    this.searchParams.set(ExtmodUrl.CLIENT_PARAM, `${isClient}`);
+    return this;
+  }
+  hasClient(): boolean {
+    return this.searchParams.has(ExtmodUrl.CLIENT_PARAM);
+  }
+  getClient(): boolean {
+    return this.searchParams.get(ExtmodUrl.CLIENT_PARAM) === "true"
+      ? true
+      : false;
+  }
+
   toOG(): URL {
     const url = new URL(this);
-    [ExtmodUrl.ERROR_PARAM, ExtmodUrl.ETAG_PARAM, ExtmodUrl.TTL_PARAM].forEach(
-      (param) => url.searchParams.delete(param)
-    );
+    [
+      ExtmodUrl.ERROR_PARAM,
+      ExtmodUrl.ETAG_PARAM,
+      ExtmodUrl.TTL_PARAM,
+      ExtmodUrl.CLIENT_PARAM,
+    ].forEach((param) => url.searchParams.delete(param));
 
     return url;
   }

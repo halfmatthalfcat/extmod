@@ -27,15 +27,18 @@ const resolveWith = (
 
 const resolve = async (
   specifier: string,
-  context: { parentURL?: string; importAssertions?: object },
+  context: { parentURL?: string; importAssertions?: { type: string } },
   next: (specifier: string, context: object) => Promise<object>
 ): Promise<object> => {
-  console.log(context);
   logger.debug(`Resolving ${specifier}`, { fn: "resolver" });
   const parentURL = context.parentURL ? new ExtmodUrl(context.parentURL) : null;
 
   if (/^http?/.test(specifier)) {
     const url = new ExtmodUrl(specifier);
+
+    if (context.importAssertions?.type === "client") {
+      url.setClient(true);
+    }
 
     const existingTtl = ttlCacheMap.get(specifier);
     const existingEtag = etagCacheMap.get(specifier);
@@ -185,7 +188,14 @@ const resolve = async (
         fn: "resolver",
       }
     );
-    return resolveWith(join(parentURL.origin, specifier), context);
+    return resolveWith(join(parentURL.origin, specifier), {
+      ...context,
+      importAssertions: parentURL.hasClient()
+        ? {
+            type: "client",
+          }
+        : {},
+    });
   } else if (!/.+:/.test(specifier)) {
     logger.debug(`Got bare specifier ${specifier}, trying to resolve locally`, {
       fn: "resolver",
