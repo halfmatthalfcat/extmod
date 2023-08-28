@@ -1,0 +1,23 @@
+{
+  "name": "@extmod/example-next-ssr",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+
+  "scripts": {
+    "dev": "extmod run --ignoreWarnings -ll debug next dev",
+    "build": "extmod run next build",
+    "start": "extmod run next start",
+    "lint": "next lint"
+  },
+  "dependencies": {
+    "@extmod/core": "*",
+    "@types/node": "20.5.2",
+    "@types/react": "^18.2.0",
+    "@types/react-dom": "^18.2.0",
+    "next": "13.4.19",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "typescript": "^5.1.6"
+  }
+}

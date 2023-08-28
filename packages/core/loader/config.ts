@@ -9,4 +9,5 @@ export default cleanEnv(process.env, {
   }),
   EXTMOD_RESOLVER_TIMEOUT_MS: num(),
   EXTMOD_LOADER_TIMEOUT_MS: num(),
+  EXTMOD_CACHE_DIR: str({ default: ".extmod" }),
 });

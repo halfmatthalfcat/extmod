@@ -9,7 +9,7 @@ import {
 import g from "@babel/generator";
 import * as parser from "@babel/parser";
 import * as t from "@babel/types";
-import { readFile } from "node:fs/promises";
+import { readFile, writeFile } from "node:fs/promises";
 import { dirname, extname, join, sep } from "node:path";
 import config from "./config";
 import logger from "./log";

@@ -1,5 +1,7 @@
 import { extmodEval } from "@extmod/core";
 
+export const dynamic = 'force-dynamic';
+
 export default async function Home() {
   // We need to wrap our import in an eval to avoid mangling/transforming from Webpack
   // @ts-ignore
