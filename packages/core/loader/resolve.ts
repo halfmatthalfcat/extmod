@@ -1,36 +1,47 @@
-import { ExtModInternalError } from "@/util/error";
+import { ExtmodErrorCodes, ExtmodInternalError } from "@/util/error";
 import TTLCache from "@isaacs/ttlcache";
 import ccp from "cache-control-parser";
 import { resolve as imr } from "import-meta-resolve";
+import { join } from "node:path";
 import config from "./config";
 import logger from "./log";
-import {
-  EXTMOD_RESOLVE_ERROR_PARAM,
-  EXTMOD_RESOLVE_ETAG_PARAM,
-  EXTMOD_RESOLVE_TTL_PARAM,
-  time,
-} from "./util";
+import { ExtmodUrl } from "./url";
+import { time } from "./util";
 const { parse: ccParse } = ccp;
 
 const etagCacheMap = new Map<string, string>();
 const ttlCacheMap = new TTLCache<string, number>();
 const lastTtlCacheMap = new Map<string, number>();
 
-export async function resolve(
+const resolveWith = (
+  url: string,
+  {
+    importAssertions,
+    shortCircuit,
+  }: { importAssertions?: object; shortCircuit?: boolean }
+) => ({
+  url,
+  shortCircuit: shortCircuit ?? true,
+  importAssertions: importAssertions ?? {},
+});
+
+const resolve = async (
   specifier: string,
-  context: any,
-  next: (specifier: string, context: any) => void
-) {
+  context: { parentURL?: string; importAssertions?: object },
+  next: (specifier: string, context: object) => Promise<object>
+): Promise<object> => {
+  console.log(context);
   logger.debug(`Resolving ${specifier}`, { fn: "resolver" });
+  const parentURL = context.parentURL ? new ExtmodUrl(context.parentURL) : null;
 
   if (/^http?/.test(specifier)) {
-    const url = new URL(specifier);
+    const url = new ExtmodUrl(specifier);
 
     const existingTtl = ttlCacheMap.get(specifier);
     const existingEtag = etagCacheMap.get(specifier);
     const lastTtl = lastTtlCacheMap.get(specifier);
 
-    let errorCode;
+    let errorCode: keyof typeof ExtmodErrorCodes;
 
     try {
       if (existingTtl != null) {
@@ -40,14 +51,13 @@ export async function resolve(
           )}ms left)`,
           { fn: "resolver" }
         );
-        url.searchParams.set(EXTMOD_RESOLVE_TTL_PARAM, existingTtl.toString());
-        return {
-          url: url.href,
-          shortCircuit: true,
-        };
+        url.setTtl(existingTtl.toString());
+        return resolveWith(url.href, context);
       }
 
-      logger.debug(`Fetching headers for ${specifier}`, { fn: "resolver" });
+      logger.debug(`Fetching headers for ${specifier}`, {
+        fn: "resolver",
+      });
       const [ms, response] = await time(() =>
         fetch(specifier, {
           signal: AbortSignal.timeout(config.EXTMOD_RESOLVER_TIMEOUT_MS),
@@ -78,13 +88,10 @@ export async function resolve(
           etagCacheMap.set(specifier, etag);
         }
 
-        url.searchParams.set(EXTMOD_RESOLVE_ETAG_PARAM, etag);
-        return {
-          url: url.href,
-          shortCircuit: true,
-        };
-      } else if (response.ok && response.headers.has("cache-control")) {
-        const cc = response.headers.get("cache-control")!;
+        url.setEtag(etag);
+        return resolveWith(url.href, context);
+      } else if (response.ok && response.headers.has("Cache-Control")) {
+        const cc = response.headers.get("Cache-Control")!;
         const { "max-age": maxAge } = ccParse(cc);
 
         if (maxAge != null && maxAge !== 0) {
@@ -94,18 +101,20 @@ export async function resolve(
           const insertionTime = Date.now();
           ttlCacheMap.set(specifier, insertionTime, { ttl: maxAge * 1000 });
           lastTtlCacheMap.set(specifier, insertionTime);
-          url.searchParams.set(
-            EXTMOD_RESOLVE_TTL_PARAM,
-            insertionTime.toString()
-          );
-          return {
-            url: url.href,
-            shortCircuit: true,
-          };
+          url.setTtl(insertionTime.toString());
+          return resolveWith(url.href, context);
         }
-      } else {
-        errorCode = response.status;
+      } else if (response.ok) {
+        logger.warn(
+          `Resolved ${specifier} but found no etag or max-age. Resource will not receive updates.`,
+          {
+            fn: "resolver",
+          }
+        );
+        return resolveWith(url.href, context);
       }
+
+      errorCode = `L${response.status}` as keyof typeof ExtmodErrorCodes;
     } catch (ex) {
       if (ex instanceof Error && ex.name === "AbortError") {
         logger.error(
@@ -114,7 +123,7 @@ export async function resolve(
             fn: "resolver",
           }
         );
-        errorCode = ExtModInternalError.RESOLVER_FETCH_TIMEOUT;
+        errorCode = ExtmodInternalError.RESOLVER_FETCH_TIMEOUT;
       } else if (
         ex instanceof Error &&
         ["TypeError", "SystemError"].includes(ex.name)
@@ -129,14 +138,14 @@ export async function resolve(
             fn: "resolver",
           }
         );
-        errorCode = ExtModInternalError.RESOLVER_FETCH_ERROR;
+        errorCode = ExtmodInternalError.RESOLVER_FETCH_ERROR;
       } else {
         logger.error(`Caught unexpected error resolving ${specifier}`, {
           fn: "resolver",
         });
       }
 
-      errorCode ??= ExtModInternalError.UNEXPECTED_ERROR;
+      errorCode ??= ExtmodInternalError.UNEXPECTED_ERROR;
     }
 
     if (existingEtag) {
@@ -144,39 +153,44 @@ export async function resolve(
         `Resolve failed with ${errorCode} but found cached etag ${existingEtag} for ${specifier}`,
         { fn: "resolver" }
       );
-      url.searchParams.set(EXTMOD_RESOLVE_ETAG_PARAM, existingEtag);
+      url.setEtag(existingEtag);
     } else if (lastTtl != null) {
       logger.warn(
         `Resolve failed with ${errorCode} but found cached ttl ${lastTtl} (insertion time) for ${specifier}`,
         { fn: "resolver" }
       );
-      url.searchParams.set(EXTMOD_RESOLVE_TTL_PARAM, lastTtl.toString());
+      url.setTtl(lastTtl.toString());
     } else if (errorCode != null) {
       logger.error(
         `Resolve failed with ${errorCode} without a cache entry for ${specifier}`,
         { fn: "resolver" }
       );
-      url.searchParams.set(EXTMOD_RESOLVE_ERROR_PARAM, errorCode.toString());
+      url.setError(errorCode);
     } else {
       logger.error(
         `Resolve failed due to unmet cache criteria for ${specifier}`,
         { fn: "resolver" }
       );
-      url.searchParams.set(
-        EXTMOD_RESOLVE_ERROR_PARAM,
-        ExtModInternalError.RESOLVER_CRITERIA_UNMET.toString()
-      );
+      url.setError(ExtmodInternalError.RESOLVER_CRITERIA_UNMET);
     }
 
-    return {
-      url: url.href,
-      shortCircuit: true,
-    };
-    // If this is a bare module specifier, try to resolve the full path
+    return resolveWith(url.href, context);
+  } else if (
+    parentURL?.protocol.startsWith("http") &&
+    specifier.startsWith("/")
+  ) {
+    logger.debug(
+      `Got relative specifier ${specifier} for remote ${parentURL.toOG().href}`,
+      {
+        fn: "resolver",
+      }
+    );
+    return resolveWith(join(parentURL.origin, specifier), context);
   } else if (!/.+:/.test(specifier)) {
-    logger.debug(`Got bare specifier ${specifier}, searching locally`, {
+    logger.debug(`Got bare specifier ${specifier}, trying to resolve locally`, {
       fn: "resolver",
     });
+
     try {
       // @ts-ignore
       const modulePath = imr(specifier, import.meta.url);
@@ -186,11 +200,7 @@ export async function resolve(
       });
 
       if (modulePath) {
-        // @ts-ignore
-        return {
-          url: modulePath,
-          shortCircuit: true,
-        };
+        return resolveWith(modulePath, context);
       }
     } catch {}
   }
@@ -200,4 +210,15 @@ export async function resolve(
   });
 
   return next(specifier, context);
-}
+};
+
+export default async <P extends Parameters<typeof resolve>>(
+  ...params: P
+): ReturnType<typeof resolve> => {
+  const [specifier, ...rest] = params;
+  const [ms, result] = await time(() => resolve(specifier, ...rest));
+  logger.debug(`Resolving ${specifier} took ${ms.toFixed(2)}ms`, {
+    fn: "resolver",
+  });
+  return result;
+};

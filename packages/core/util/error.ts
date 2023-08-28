@@ -73,7 +73,15 @@ const HttpStatusCodes = {
   511: "Network Authentication Required",
 } as const;
 
-export const ExtModInternalError = {
+export type ResolverHttpError = {
+  [K in keyof typeof HttpStatusCodes as `L${K}`]: (typeof HttpStatusCodes)[K];
+};
+
+export type LoaderHttpError = {
+  [K in keyof typeof HttpStatusCodes as `R${K}`]: (typeof HttpStatusCodes)[K];
+};
+
+export const ExtmodInternalError = {
   EXPECTED_ESM_FOUND_CJS: -1,
   RESOLVER_FETCH_TIMEOUT: -2,
   LOADER_FETCH_TIMEOUT: -3,
@@ -83,34 +91,52 @@ export const ExtModInternalError = {
   UNEXPECTED_ERROR: -99,
 } as const;
 
-export const ExtModInternalErrorCodes = {
-  [ExtModInternalError.EXPECTED_ESM_FOUND_CJS]: "Expected ESM but found CJS",
-  [ExtModInternalError.RESOLVER_FETCH_TIMEOUT]: "Resolving module timed out",
-  [ExtModInternalError.LOADER_FETCH_TIMEOUT]: "Loading module timed out",
-  [ExtModInternalError.RESOLVER_FETCH_ERROR]:
+export const ExtmodInternalErrorCodes = {
+  [ExtmodInternalError.EXPECTED_ESM_FOUND_CJS]: "Expected ESM but found CJS",
+  [ExtmodInternalError.RESOLVER_FETCH_TIMEOUT]: "Resolving module timed out",
+  [ExtmodInternalError.LOADER_FETCH_TIMEOUT]: "Loading module timed out",
+  [ExtmodInternalError.RESOLVER_FETCH_ERROR]:
     "Resolving module failed (e.g. networking, malformed url; see error logs)",
-  [ExtModInternalError.LOADER_FETCH_ERROR]:
+  [ExtmodInternalError.LOADER_FETCH_ERROR]:
     "Loading module failed (e.g. networking, malformed url; see error logs)",
-  [ExtModInternalError.RESOLVER_CRITERIA_UNMET]:
+  [ExtmodInternalError.RESOLVER_CRITERIA_UNMET]:
     "Resolving module did not met established criteria",
-  [ExtModInternalError.UNEXPECTED_ERROR]:
+  [ExtmodInternalError.UNEXPECTED_ERROR]:
     "Remote module loading encountered an unexpected error",
 } as const;
 
-export const ExtModErrorCodes = {
-  ...ExtModInternalErrorCodes,
-  ...HttpStatusCodes,
+export const ExtmodErrorCodes = {
+  ...ExtmodInternalErrorCodes,
+  ...Object.entries(HttpStatusCodes).reduce(
+    (acc, [k, v]) => ({
+      ...acc,
+      [`R${k}`]: v,
+    }),
+    {} as ResolverHttpError
+  ),
+  ...Object.entries(HttpStatusCodes).reduce(
+    (acc, [k, v]) => ({
+      ...acc,
+      [`L${k}`]: v,
+    }),
+    {} as LoaderHttpError
+  ),
 } as const;
 
-export const getErrorReasonFromCode = (code: keyof typeof ExtModErrorCodes) => {
-  if (code > 0) {
+export const getErrorReasonFromCode = (code: keyof typeof ExtmodErrorCodes) => {
+  const parsedCode =
+    (typeof code === "string" &&
+      parseInt(/^[LR](\d+)$/.exec(code)?.[1] ?? "", 10)) ||
+    (code as number);
+
+  if (parsedCode > 0) {
     return (
       HttpStatusCodes[code as keyof typeof HttpStatusCodes] ??
       "Unknown HTTP Code"
     );
   } else {
     return (
-      ExtModInternalErrorCodes[code as keyof typeof ExtModInternalErrorCodes] ??
+      ExtmodInternalErrorCodes[code as keyof typeof ExtmodInternalErrorCodes] ??
       "Unknown Loader Code"
     );
   }

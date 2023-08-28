@@ -1,3 +1,4 @@
 // Loader entrypoint
-export { load } from "./load";
-export { resolve } from "./resolve";
+export { default as load } from "./load";
+export { default as resolve } from "./resolve";
+

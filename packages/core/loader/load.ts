@@ -2,8 +2,8 @@ import {
   EXTMOD_ERROR,
   EXTMOD_ERROR_CODE,
   EXTMOD_ERROR_REASON,
-  ExtModErrorCodes,
-  ExtModInternalError,
+  ExtmodErrorCodes,
+  ExtmodInternalError,
   getErrorReasonFromCode,
 } from "@/util/error";
 import g from "@babel/generator";
@@ -13,12 +13,13 @@ import { readFile } from "node:fs/promises";
 import { dirname, extname, join, sep } from "node:path";
 import config from "./config";
 import logger from "./log";
-import { extmodUrl, time } from "./util";
+import { ExtmodUrl } from "./url";
+import { time } from "./util";
 // @ts-ignore: babel .d.ts is wrong
 // @see: https://github.com/babel/babel/issues/15269
 const { default: generate } = g;
 
-const buildError = (code: keyof typeof ExtModErrorCodes) =>
+const buildError = (code: keyof typeof ExtmodErrorCodes) =>
   generate(
     t.exportDefaultDeclaration(
       t.objectExpression([
@@ -27,7 +28,9 @@ const buildError = (code: keyof typeof ExtModErrorCodes) =>
           t.objectExpression([
             t.objectProperty(
               t.stringLiteral(EXTMOD_ERROR_CODE),
-              t.numericLiteral(code)
+              typeof code === "number"
+                ? t.numericLiteral(code)
+                : t.stringLiteral(code)
             ),
             t.objectProperty(
               t.stringLiteral(EXTMOD_ERROR_REASON),
@@ -39,19 +42,19 @@ const buildError = (code: keyof typeof ExtModErrorCodes) =>
     )
   ).code;
 
-export async function load(
-  resolvedUrl: string,
-  context: any,
-  next: (url: string) => void
-) {
-  const { error, url } = extmodUrl(new URL(resolvedUrl));
-  resolvedUrl = url.href;
+const load = async (
+  _resolvedUrl: string,
+  context: { importAssertions: { type?: string } } = { importAssertions: {} },
+  next: (url: string) => Promise<object>
+): Promise<object> => {
+  console.log(context);
+  const url = new ExtmodUrl(_resolvedUrl);
+  const resolvedUrl = url.toOG().href;
 
   if (["http:", "https:"].includes(url.protocol)) {
-    if (error) {
-      const errorCode = parseInt(error, 10);
+    if (url.hasError()) {
       logger.warn(
-        `Recieved error ${errorCode} from resolver for ${resolvedUrl}`,
+        `Recieved error ${url.getError()} from resolver for ${resolvedUrl}`,
         {
           fn: "loader",
         }
@@ -60,7 +63,8 @@ export async function load(
       return {
         format: "module",
         shortCircuit: true,
-        source: buildError(errorCode as keyof typeof ExtModErrorCodes),
+        source: buildError(url.getError()),
+        responseURL: url.href,
       };
     } else {
       try {
@@ -83,17 +87,18 @@ export async function load(
             format: "module",
             shortCircuit: true,
             source: buildError(
-              response.status as keyof typeof ExtModErrorCodes
+              `L${response.status}` as keyof typeof ExtmodErrorCodes
             ),
+            responseURL: url.href,
           };
         }
 
         const text = await response.text();
-        const {
-          program: { sourceType },
-        } = parser.parse(text, {
+        let { program } = parser.parse(text, {
           sourceType: "unambiguous",
+          plugins: [["importAttributes", { deprecatedAssertSyntax: true }]],
         });
+        const { sourceType, directives } = program;
 
         if (sourceType !== "module") {
           console.log(`Fetched resource ${resolvedUrl} is CJS`, {
@@ -102,14 +107,38 @@ export async function load(
           return {
             format: "module",
             shortCircuit: true,
-            source: buildError(ExtModInternalError.EXPECTED_ESM_FOUND_CJS),
+            source: buildError(ExtmodInternalError.EXPECTED_ESM_FOUND_CJS),
+            responseURL: url.href,
+          };
+        }
+
+        if (
+          context.importAssertions.type === "client" &&
+          directives.every((d) => d.value.value !== "use client")
+        ) {
+          logger.debug(
+            `Resource ${resolvedUrl} imported with client assertion`,
+            {
+              fn: "loader",
+            }
+          );
+
+          program = {
+            ...program,
+            directives: [
+              ...program.directives,
+              t.directive(t.directiveLiteral("use client")),
+            ],
           };
         }
 
         return {
           format: "module",
           shortCircuit: true,
-          source: text,
+          source: generate(program, {
+            importAttributesKeyword: "assert",
+          }).code,
+          responseURL: url.href,
         };
       } catch (ex) {
         if (ex instanceof Error && ex.name === "AbortError") {
@@ -122,7 +151,8 @@ export async function load(
           return {
             format: "module",
             shortCircuit: true,
-            source: buildError(ExtModInternalError.LOADER_FETCH_TIMEOUT),
+            source: buildError(ExtmodInternalError.LOADER_FETCH_TIMEOUT),
+            responseURL: url.href,
           };
         } else if (
           ex instanceof Error &&
@@ -141,7 +171,8 @@ export async function load(
           return {
             format: "module",
             shortCircuit: true,
-            source: buildError(ExtModInternalError.LOADER_FETCH_ERROR),
+            source: buildError(ExtmodInternalError.LOADER_FETCH_ERROR),
+            responseURL: url.href,
           };
         } else if (ex instanceof Error) {
           logger.error(
@@ -159,7 +190,8 @@ export async function load(
         return {
           format: "module",
           shortCircuit: true,
-          source: buildError(ExtModInternalError.UNEXPECTED_ERROR),
+          source: buildError(ExtmodInternalError.UNEXPECTED_ERROR),
+          responseURL: url.href,
         };
       }
     }
@@ -169,7 +201,7 @@ export async function load(
   // CJS fallback for ESM loaders. This code is ripped from the below, with some modifications.
   // @see https://github.com/orgs/nodejs/discussions/41711
   const ext = extname(url.pathname).slice(1);
-  if (!ext) return loadBin(url, context, next);
+  if (!ext) return loadBin(url.toOG(), context, next);
   else if (["js", "mjs"].includes(ext)) {
     // Check to see if source is ESM or CJS
     const file = await readFile(url, { encoding: "utf-8" });
@@ -187,13 +219,13 @@ export async function load(
   }
 
   return next(resolvedUrl);
-}
+};
 
 async function loadBin(
   url: URL,
   // @ts-ignore
   context,
-  next: (url: string, context: unknown) => void
+  next: (url: string, context: unknown) => Promise<object>
 ) {
   const dirs = dirname(url.pathname).split(sep);
   const parentDir = dirs.at(-1);
@@ -215,3 +247,14 @@ async function loadBin(
     format,
   });
 }
+
+export default async <P extends Parameters<typeof load>>(
+  ...params: P
+): ReturnType<typeof load> => {
+  const [resolvedUrl, ...rest] = params;
+  const [ms, result] = await time(() => load(resolvedUrl, ...rest));
+  logger.debug(`Loading ${resolvedUrl} took ${ms.toFixed(2)}ms`, {
+    fn: "loader",
+  });
+  return result;
+};

@@ -2,12 +2,12 @@ import {
   EXTMOD_ERROR,
   EXTMOD_ERROR_CODE,
   EXTMOD_ERROR_REASON,
-  ExtModErrorCodes,
+  ExtmodErrorCodes,
 } from "./error";
 
-export type ExtMod<T extends object> = T & {
+export type Extmod<T extends object> = T & {
   [EXTMOD_ERROR]?: {
-    [EXTMOD_ERROR_CODE]: keyof typeof ExtModErrorCodes;
-    [EXTMOD_ERROR_REASON]: (typeof ExtModErrorCodes)[keyof typeof ExtModErrorCodes];
+    [EXTMOD_ERROR_CODE]: keyof typeof ExtmodErrorCodes;
+    [EXTMOD_ERROR_REASON]: (typeof ExtmodErrorCodes)[keyof typeof ExtmodErrorCodes];
   };
 };

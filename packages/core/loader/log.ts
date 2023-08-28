@@ -1,6 +1,6 @@
 import { config, createLogger, format, transports } from "winston";
 import extmodConfig from "./config";
-const { combine, label, timestamp, printf } = format;
+const { combine, timestamp, printf } = format;
 
 const maxLevelWidth = Math.max(
   ...Object.keys(config.npm.levels).map((str) => str.length)

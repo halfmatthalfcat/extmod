@@ -5,5 +5,7 @@ export default async function Home() {
   // @ts-ignore
   const Component = await extmodEval("http://localhost:3333/react.mjs");
 
+  console.log(Component);
+
   return <Component.default />;
 }
