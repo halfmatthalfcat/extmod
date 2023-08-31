@@ -7,6 +7,7 @@ export class ExtmodUrl extends URL {
   static ETAG_PARAM = "__extmod_etag";
   static TTL_PARAM = "__extmod_ttl";
   static CLIENT_PARAM = "__extmod_client";
+  static BUNDLE_PARAM = "__extmod_bundle";
 
   static withProtocol = (
     protocol: string,
@@ -16,6 +17,10 @@ export class ExtmodUrl extends URL {
 
   constructor(...url: ConstructorParameters<typeof URL>) {
     super(...url);
+  }
+
+  public isRemote(): boolean {
+    return /^https?/.test(this.protocol);
   }
 
   setError(code: keyof typeof ExtmodErrorCodes): this {
@@ -62,6 +67,19 @@ export class ExtmodUrl extends URL {
   }
   getClient(): boolean {
     return this.searchParams.get(ExtmodUrl.CLIENT_PARAM) === "true"
+      ? true
+      : false;
+  }
+
+  setBundle(isBundle: boolean): this {
+    this.searchParams.set(ExtmodUrl.BUNDLE_PARAM, `${isBundle}`);
+    return this;
+  }
+  hasBundle(): boolean {
+    return this.searchParams.has(ExtmodUrl.BUNDLE_PARAM);
+  }
+  getBundle(): boolean {
+    return this.searchParams.get(ExtmodUrl.BUNDLE_PARAM) === "true"
       ? true
       : false;
   }

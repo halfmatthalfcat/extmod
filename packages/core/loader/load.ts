@@ -1,3 +1,5 @@
+/// <reference types="typings-esm-loader" />
+
 import {
   EXTMOD_ERROR,
   EXTMOD_ERROR_CODE,
@@ -9,12 +11,15 @@ import {
 import g from "@babel/generator";
 import * as parser from "@babel/parser";
 import * as t from "@babel/types";
+import * as esbuild from "esbuild";
 import { readFile } from "node:fs/promises";
 import { dirname, extname, join, sep } from "node:path";
 import config from "./config";
+import EsbuildExtmodCJSToESM from "./esbuild/cjs-to-esm-exports";
+import EsbuildExtmodResolver from "./esbuild/extmod-resolver";
 import logger from "./log";
 import { ExtmodUrl } from "./url";
-import { time, writeFile } from "./util";
+import { spawn, time, writeFile } from "./util";
 // @ts-ignore: babel .d.ts is wrong
 // @see: https://github.com/babel/babel/issues/15269
 const { default: generate } = g;
@@ -42,18 +47,7 @@ const buildError = (code: keyof typeof ExtmodErrorCodes) =>
     )
   ).code;
 
-interface LoadNext {
-  source: string;
-  format?: string;
-  shortCircuit?: boolean;
-  responseURL?: string;
-}
-
-const load = async (
-  _resolvedUrl: string,
-  context: { importAssertions: { type?: string } } = { importAssertions: {} },
-  next: (url: string, context: any) => Promise<LoadNext>
-): Promise<LoadNext> => {
+const _load: load = async (_resolvedUrl, context, next) => {
   const url = new ExtmodUrl(_resolvedUrl);
   const resolvedUrl = url.toOG().href;
 
@@ -71,6 +65,90 @@ const load = async (
         shortCircuit: true,
         source: buildError(url.getError()),
         responseURL: url.href,
+      };
+    } else if (
+      (url.hasClient() || context.importAssertions.type === "client") &&
+      !config.EXTMOD_IN_CLIENT_PROCESS
+    ) {
+      logger.debug(
+        `Resource ${resolvedUrl} imported with client assertion and is the root client entrypoint - beginning bundling`,
+        {
+          fn: "loader",
+        }
+      );
+
+      // There isn't a good way within the main loader to wait until a entire
+      // import tree has resolved, which we need to do to bundle the client chunk.
+      // This basically replicates it by spawning an import process wholesale against
+      // the head of our client chunk levarging this same loader.
+      const [importMs] = await time(() =>
+        spawn(
+          "node",
+          [
+            `--experimental-policy=${config.EXTMOD_PERM_CONFIG_URL}`,
+            `--experimental-loader=${import.meta.url}`,
+            ...(config.EXTMOD_IGNORE_WARNINGS ? ["--no-warnings"] : []),
+            "-e",
+            `import("${new ExtmodUrl(url.toOG()).setBundle(true).href}")`,
+          ],
+          {
+            stdio: "inherit",
+            env: {
+              ...process.env,
+              EXTMOD_IN_CLIENT_PROCESS: "true",
+            },
+          }
+        )
+      );
+
+      logger.debug(
+        `Client bundle import resolution for ${resolvedUrl} complete (${importMs.toFixed(
+          2
+        )}ms)`,
+        {
+          fn: "loader",
+        }
+      );
+
+      let path = join(config.EXTMOD_CACHE_DIR, url.pathname);
+      const ext = extname(path);
+      if (!ext || ![".js", ".mjs"].includes(ext)) {
+        path = join(path, "index.mjs");
+      }
+
+      const [
+        bundleMs,
+        {
+          outputFiles: [{ contents: source }],
+        },
+      ] = await time(() =>
+        esbuild.build({
+          entryPoints: [path],
+          bundle: true,
+          write: false,
+          platform: "browser",
+          format: "esm",
+          jsx: "automatic",
+          plugins: [EsbuildExtmodCJSToESM, EsbuildExtmodResolver],
+        })
+      );
+
+      console.log(new TextDecoder().decode(source));
+
+      logger.debug(
+        `Client bundle esbuild for ${resolvedUrl} complete (${bundleMs.toFixed(
+          2
+        )}ms)`,
+        {
+          fn: "loader",
+        }
+      );
+
+      return {
+        format: "module",
+        source,
+        shortCircuit: true,
+        responseURL: url.setBundle(true).href,
       };
     } else {
       try {
@@ -107,7 +185,7 @@ const load = async (
         const { sourceType, directives } = program;
 
         if (sourceType !== "module") {
-          console.log(`Fetched resource ${resolvedUrl} is CJS`, {
+          logger.log(`Fetched resource ${resolvedUrl} is CJS`, {
             fn: "loader",
           });
           return {
@@ -119,11 +197,25 @@ const load = async (
         }
 
         const isUseClient = directives.some(
-          (d) => d.value.value !== "use client"
+          (d) => d.value.value === "use client"
         );
         const assertUseClient = context.importAssertions.type === "client";
 
-        if (isUseClient || assertUseClient) {
+        if (
+          (isUseClient || assertUseClient) &&
+          !config.EXTMOD_IN_CLIENT_PROCESS
+        ) {
+          logger.debug(
+            `Resource ${resolvedUrl} imported with client ${
+              isUseClient ? "intention" : "assertion"
+            } and is the root client entrypoint - beginning bundling`,
+            {
+              fn: "loader",
+            }
+          );
+
+          return _load(url.setClient(true).href, context, next);
+        } else if (config.EXTMOD_IN_CLIENT_PROCESS) {
           logger.debug(
             `Resource ${resolvedUrl} imported with client ${
               isUseClient ? "intention" : "assertion"
@@ -140,9 +232,10 @@ const load = async (
               : [...directives, t.directive(t.directiveLiteral("use client"))],
           };
 
-          let path = join(process.cwd(), config.EXTMOD_CACHE_DIR, url.pathname);
+          let path = join(config.EXTMOD_CACHE_DIR, url.pathname);
           const ext = extname(path);
-          if (!ext || !["js", "mjs"].includes(ext)) {
+
+          if (!ext || ![".js", ".mjs"].includes(ext)) {
             path = join(path, "index.mjs");
           }
 
@@ -153,12 +246,6 @@ const load = async (
           await writeFile(path, code);
 
           const localFile = ExtmodUrl.withProtocol("file://", path).href;
-
-          console.log(`Resolving ${localFile}`)
-
-          const i = await load(localFile, context, next);
-
-          console.log({ i });
 
           const { source } = await next(localFile, {
             ...context,
@@ -250,7 +337,7 @@ const load = async (
   // CJS fallback for ESM loaders. This code is ripped from the below, with some modifications.
   // @see https://github.com/orgs/nodejs/discussions/41711
   const ext = extname(url.pathname).slice(1);
-  if (!ext) return loadBin(url.toOG(), context, next);
+  if (!ext) return loadBin(url.toOG().href, context, next);
   else if (["js", "mjs"].includes(ext)) {
     // Check to see if source is ESM or CJS
     const file = await readFile(url, { encoding: "utf-8" });
@@ -260,6 +347,22 @@ const load = async (
       sourceType: "unambiguous",
     });
 
+    if (sourceType === "script") {
+      try {
+        const { source } = await next(url.toOG().href, {
+          format: "commonjs",
+        });
+
+        return {
+          source,
+          shortCircuit: true,
+          format: "commonjs",
+        };
+      } catch (ex) {
+        console.log({ ex });
+      }
+    }
+
     return {
       format: sourceType === "module" ? "module" : "commonjs",
       shortCircuit: true,
@@ -267,15 +370,11 @@ const load = async (
     };
   }
 
-  return next(resolvedUrl, context);
+  return next(_resolvedUrl, context);
 };
 
-async function loadBin(
-  url: URL,
-  // @ts-ignore
-  context,
-  next: (url: string, context: unknown) => Promise<LoadNext>
-) {
+const loadBin: load = async (responseURL, context, next) => {
+  const url = new URL(responseURL);
   const dirs = dirname(url.pathname).split(sep);
   const parentDir = dirs.at(-1);
   const nodeModDir = dirs.indexOf("node_modules");
@@ -295,15 +394,26 @@ async function loadBin(
     ...context,
     format,
   });
-}
+};
 
-export default async <P extends Parameters<typeof load>>(
+export default async <P extends Parameters<load>>(
   ...params: P
-): ReturnType<typeof load> => {
+): ReturnType<load> => {
   const [resolvedUrl, ...rest] = params;
-  const [ms, result] = await time(() => load(resolvedUrl, ...rest));
-  logger.debug(`Loading ${resolvedUrl} took ${ms.toFixed(2)}ms`, {
-    fn: "loader",
-  });
+  logger.debug(
+    // @ts-ignore
+    `Loading ${resolvedUrl}`,
+    {
+      fn: "loader",
+    }
+  );
+  const [ms, result] = await time(() => _load(resolvedUrl, ...rest));
+  logger.debug(
+    // @ts-ignore
+    `Loaded ${result.responseURL ?? resolvedUrl} took ${ms.toFixed(2)}ms`,
+    {
+      fn: "loader",
+    }
+  );
   return result;
 };

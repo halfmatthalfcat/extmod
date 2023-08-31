@@ -6,7 +6,9 @@ const maxLevelWidth = Math.max(
   ...Object.keys(config.npm.levels).map((str) => str.length)
 );
 const maxFnWidth = Math.max(
-  ...["resolver", "loader", "general"].map((str) => str.length)
+  ...["resolver", "loader", "esb-resolver", "esb-loader", "general"].map(
+    (str) => str.length
+  )
 );
 
 const consoleFormat = printf(

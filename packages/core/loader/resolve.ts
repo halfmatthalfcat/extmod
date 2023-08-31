@@ -1,8 +1,10 @@
+/// <reference types="typings-esm-loader" />
+
 import { ExtmodErrorCodes, ExtmodInternalError } from "@/util/error";
 import TTLCache from "@isaacs/ttlcache";
 import ccp from "cache-control-parser";
 import { resolve as imr } from "import-meta-resolve";
-import { join } from "node:path";
+import { join, resolve } from "node:path";
 import config from "./config";
 import logger from "./log";
 import { ExtmodUrl } from "./url";
@@ -25,12 +27,7 @@ const resolveWith = (
   importAssertions: importAssertions ?? {},
 });
 
-const resolve = async (
-  specifier: string,
-  context: { parentURL?: string; importAssertions?: { type: string } },
-  next: (specifier: string, context: object) => Promise<object>
-): Promise<object> => {
-  logger.debug(`Resolving ${specifier}`, { fn: "resolver" });
+const _resolve: resolve = async (specifier, context, next) => {
   const parentURL = context.parentURL ? new ExtmodUrl(context.parentURL) : null;
 
   if (/^http?/.test(specifier)) {
@@ -178,25 +175,61 @@ const resolve = async (
     }
 
     return resolveWith(url.href, context);
-  } else if (
-    parentURL?.protocol.startsWith("http") &&
-    specifier.startsWith("/")
+  }
+
+  if (
+    parentURL?.isRemote() &&
+    !parentURL.getBundle() &&
+    !parentURL.getClient()
   ) {
-    logger.debug(
-      `Got relative specifier ${specifier} for remote ${parentURL.toOG().href}`,
-      {
-        fn: "resolver",
-      }
-    );
-    return resolveWith(join(parentURL.origin, specifier), {
-      ...context,
-      importAssertions: parentURL.hasClient()
-        ? {
-            type: "client",
-          }
-        : {},
+    if (specifier.startsWith("/")) {
+      logger.debug(
+        `Got absolute specifier ${specifier} for remote ${
+          parentURL.toOG().href
+        }`,
+        {
+          fn: "resolver",
+        }
+      );
+      return resolveWith(join(parentURL.origin, specifier), {
+        ...context,
+        importAssertions: parentURL.hasClient()
+          ? {
+              type: "client",
+            }
+          : {},
+      });
+    } else if (specifier.startsWith(".")) {
+      logger.debug(
+        `Got relative specifier ${specifier} for remote ${
+          parentURL.toOG().href
+        }`,
+        {
+          fn: "resolver",
+        }
+      );
+      return resolveWith(
+        join(parentURL.origin, resolve(parentURL.pathname, specifier)),
+        {
+          ...context,
+          importAssertions: parentURL.hasClient()
+            ? {
+                type: "client",
+              }
+            : {},
+        }
+      );
+    }
+  }
+
+  if (specifier.startsWith(".")) {
+    logger.debug(`Got relative specifier ${specifier}`, {
+      fn: "resolver",
     });
-  } else if (!/.+:/.test(specifier)) {
+    return resolveWith(`file://${resolve(process.cwd(), specifier)}`, context);
+  }
+
+  if (!/^.+:\/\//.test(specifier)) {
     logger.debug(`Got bare specifier ${specifier}, trying to resolve locally`, {
       fn: "resolver",
     });
@@ -222,12 +255,18 @@ const resolve = async (
   return next(specifier, context);
 };
 
-export default async <P extends Parameters<typeof resolve>>(
+export default async <P extends Parameters<resolve>>(
   ...params: P
-): ReturnType<typeof resolve> => {
-  const [specifier, ...rest] = params;
-  const [ms, result] = await time(() => resolve(specifier, ...rest));
-  logger.debug(`Resolving ${specifier} took ${ms.toFixed(2)}ms`, {
+): ReturnType<resolve> => {
+  const [specifier, context, ...rest] = params;
+  logger.debug(
+    `Resolving ${specifier}${
+      context.parentURL ? ` (parent: ${context.parentURL})` : ""
+    }`,
+    { fn: "resolver" }
+  );
+  const [ms, result] = await time(() => _resolve(specifier, context, ...rest));
+  logger.debug(`Resolved ${specifier} took ${ms.toFixed(2)}ms`, {
     fn: "resolver",
   });
   return result;
