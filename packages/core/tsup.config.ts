@@ -7,11 +7,10 @@ export default defineConfig([
     format: ["esm"],
     target: "esnext",
     splitting: false,
-    clean: true,
-    external: ['esbuild'],
+    external: ["esbuild"],
     outExtension({ format }) {
       return {
-        js: format === "esm" ? ".mjs" : `.${format}`,
+        js: format === "esm" ? ".mjs" : `.js`,
       };
     },
   },
@@ -24,7 +23,20 @@ export default defineConfig([
     dts: true,
     outExtension({ format }) {
       return {
-        js: format === "esm" ? ".mjs" : `.${format}`,
+        js: format === "esm" ? ".mjs" : `.js`,
+      };
+    },
+  },
+  {
+    entry: ["extmod_mgr.ts"],
+    outDir: "dist",
+    format: ["iife"],
+    target: "esnext",
+    splitting: false,
+    minify: true,
+    outExtension({ format }) {
+      return {
+        js: format === "esm" ? ".mjs" : `.js`,
       };
     },
   },

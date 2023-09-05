@@ -4,12 +4,14 @@ import { ExtmodErrorCodes, ExtmodInternalError } from "@/util/error";
 import TTLCache from "@isaacs/ttlcache";
 import ccp from "cache-control-parser";
 import { resolve as imr } from "import-meta-resolve";
+import { createRequire as nodeRequire } from "node:module";
 import { join, resolve } from "node:path";
 import config from "./config";
 import logger from "./log";
 import { ExtmodUrl } from "./url";
 import { time } from "./util";
 const { parse: ccParse } = ccp;
+const require = nodeRequire(import.meta.url);
 
 const etagCacheMap = new Map<string, string>();
 const ttlCacheMap = new TTLCache<string, number>();
@@ -233,6 +235,37 @@ const _resolve: resolve = async (specifier, context, next) => {
     logger.debug(`Got bare specifier ${specifier}, trying to resolve locally`, {
       fn: "resolver",
     });
+
+    if ("__NEXT_PRIVATE_PREBUNDLED_REACT" in process.env) {
+      const { baseOverrides, experimentalOverrides } = await import(
+        "next/dist/server/require-hook.js"
+      );
+      const effectiveOverrides =
+        process.env.__NEXT_PRIVATE_PREBUNDLED_REACT === "next"
+          ? baseOverrides
+          : experimentalOverrides;
+
+      if (Object.keys(effectiveOverrides).includes(specifier)) {
+        logger.debug(
+          `Resolving ${specifier} in a Next.js app (flavor: ${
+            process.env.__NEXT_PRIVATE_PREBUNDLED_REACT
+          }) with builtin ${
+            effectiveOverrides[specifier as keyof typeof effectiveOverrides]
+          }`,
+          {
+            fn: "resolver",
+          }
+        );
+
+        try {
+          const modulePath = require.resolve(
+            effectiveOverrides[specifier as keyof typeof effectiveOverrides]
+          );
+
+          return resolveWith(`file://${modulePath}`, context);
+        } catch {}
+      }
+    }
 
     try {
       // @ts-ignore

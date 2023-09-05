@@ -1,5 +1,6 @@
 import { extmodEval } from "@extmod/core";
 import { Suspense } from "react";
+// import Component from "./component";
 
 // export const dynamic = 'force-dynamic';
 
@@ -15,7 +16,7 @@ export default async function Home() {
   return (
     <>
       <div>Server Component</div>
-      <Suspense>
+      <Suspense fallback={<div>Loading...</div>}>
         <Component />
       </Suspense>
     </>

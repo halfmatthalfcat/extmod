@@ -11,7 +11,8 @@
   "exports": {
     ".": "./dist/index.mjs",
     "./cli": "./dist/cli/index.mjs",
-    "./loader": "./dist/loader/index.mjs"
+    "./loader": "./dist/loader/index.mjs",
+    "./mgr": "./dist/extmod_mgr.js"
   },
   "engines": {
     "node": ">=18"
@@ -45,5 +46,13 @@
     "concurrently": "^8.2.0",
     "tsup": "^7.2.0",
     "typescript": "^5.1.6"
+  },
+  "peerDependencies": {
+    "next": "^13"
+  },
+  "peerDependenciesMeta": {
+    "next": {
+      "optional": true
+    }
   }
 }

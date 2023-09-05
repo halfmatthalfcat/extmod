@@ -8,6 +8,9 @@ export class ExtmodUrl extends URL {
   static TTL_PARAM = "__extmod_ttl";
   static CLIENT_PARAM = "__extmod_client";
   static BUNDLE_PARAM = "__extmod_bundle";
+  static CLIENT_SERVER_FN_PARAM = "__extmod_client_server_fn";
+  static CLIENT_CLIENT_FN_PARAM = "__extmod_client_client_fn";
+  static CLIENT_FALLBACK_URL = "__extmod_client_fallback";
 
   static withProtocol = (
     protocol: string,

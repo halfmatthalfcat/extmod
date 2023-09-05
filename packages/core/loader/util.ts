@@ -1,9 +1,9 @@
 import isValidIdentifier from "is-valid-identifier";
 import { spawn as _spawn } from "node:child_process";
 import { writeFile as fsWriteFile, mkdir } from "node:fs/promises";
-import { createRequire } from "node:module";
 import { basename } from "node:path";
-const require = createRequire(import.meta.url);
+import { createRequire as nodeRequire } from "node:module";
+const require = nodeRequire(import.meta.url);
 
 export const time: <T>(
   fn: () => T | Promise<T>
@@ -48,7 +48,7 @@ export const hasCjsExports = (path: string) => {
   }
 
   return !!keys.size;
-}
+};
 
 export const cjsEsmWrapper = (path: string) => {
   const module = require(path.replace("file://", ""));

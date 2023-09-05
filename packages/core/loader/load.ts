@@ -18,11 +18,17 @@ import config from "./config";
 import EsbuildExtmodCJSToESM from "./esbuild/cjs-to-esm-exports";
 import EsbuildExtmodResolver from "./esbuild/extmod-resolver";
 import logger from "./log";
+import { port } from "./preload";
 import { ExtmodUrl } from "./url";
 import { spawn, time, writeFile } from "./util";
 // @ts-ignore: babel .d.ts is wrong
 // @see: https://github.com/babel/babel/issues/15269
 const { default: generate } = g;
+
+import { customAlphabet } from "nanoid";
+const alphabet =
+  "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
+const nanoid = customAlphabet(alphabet, 8);
 
 const buildError = (code: keyof typeof ExtmodErrorCodes) =>
   generate(
@@ -77,11 +83,13 @@ const _load: load = async (_resolvedUrl, context, next) => {
         }
       );
 
+      const id = nanoid();
+
       // There isn't a good way within the main loader to wait until a entire
       // import tree has resolved, which we need to do to bundle the client chunk.
       // This basically replicates it by spawning an import process wholesale against
       // the head of our client chunk levarging this same loader.
-      const [importMs] = await time(() =>
+      const promise = time(() =>
         spawn(
           "node",
           [
@@ -99,50 +107,49 @@ const _load: load = async (_resolvedUrl, context, next) => {
             },
           }
         )
-      );
+      ).then(([importMs]) => {
+        logger.debug(
+          `Client bundle import resolution for ${resolvedUrl} complete (${importMs.toFixed(
+            2
+          )}ms)`,
+          {
+            fn: "loader",
+          }
+        );
 
-      logger.debug(
-        `Client bundle import resolution for ${resolvedUrl} complete (${importMs.toFixed(
-          2
-        )}ms)`,
-        {
-          fn: "loader",
+        let path = join(config.EXTMOD_CACHE_DIR, url.pathname);
+        const ext = extname(path);
+        if (!ext || ![".js", ".mjs"].includes(ext)) {
+          path = join(path, "index.mjs");
         }
-      );
 
-      let path = join(config.EXTMOD_CACHE_DIR, url.pathname);
-      const ext = extname(path);
-      if (!ext || ![".js", ".mjs"].includes(ext)) {
-        path = join(path, "index.mjs");
-      }
+        return time(() =>
+          esbuild.build({
+            entryPoints: [path],
+            bundle: true,
+            write: true,
+            outfile: `bundle.${id}.js`,
+            platform: "browser",
+            format: "iife",
+            globalName: `window.extmod["${id}"]`,
+            jsx: "automatic",
+            plugins: [EsbuildExtmodCJSToESM, EsbuildExtmodResolver],
+          })
+        ).then(([bundleMs]) => {
+          logger.debug(
+            `Client bundle esbuild for ${resolvedUrl} complete (${bundleMs.toFixed(
+              2
+            )}ms)`,
+            {
+              fn: "loader",
+            }
+          );
 
-      const [
-        bundleMs,
-        {
-          outputFiles: [{ contents: source }],
-        },
-      ] = await time(() =>
-        esbuild.build({
-          entryPoints: [path],
-          bundle: true,
-          write: false,
-          platform: "browser",
-          format: "esm",
-          jsx: "automatic",
-          plugins: [EsbuildExtmodCJSToESM, EsbuildExtmodResolver],
-        })
-      );
-
-      console.log(new TextDecoder().decode(source));
-
-      logger.debug(
-        `Client bundle esbuild for ${resolvedUrl} complete (${bundleMs.toFixed(
-          2
-        )}ms)`,
-        {
-          fn: "loader",
-        }
-      );
+          if (port) {
+            port.postMessage(id);
+          }
+        });
+      });
 
       return {
         format: "module",
