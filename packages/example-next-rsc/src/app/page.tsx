@@ -1,4 +1,5 @@
 import { extmodClient } from "@extmod/core";
+import { ExtmodClientWrapper } from "@extmod/core/client";
 // import Component from "./component";
 
 // export const dynamic = 'force-dynamic';
@@ -17,7 +18,9 @@ export default async function Home() {
   return (
     <>
       <div>Server Component</div>
-      <Component />
+      <ExtmodClientWrapper>
+        <Component />
+      </ExtmodClientWrapper>
     </>
   );
 }

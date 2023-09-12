@@ -42,22 +42,7 @@ export const clientFlowSnippet = ({
   const Server = () => {
     use(waitForBundle);
 
-    return <Client />;
-  };
-  
-  const Client = () => {
-    // const [Component, setComponent] = useState(window.extmod?.["${id}"]);
-  
-    // useEffect(() => {
-    //     const fn = (evt) =>
-    //       evt.id === "${id}" && setComponent(evt.mod);
-    //   window.extmod?.addEventListener("EXTMOD_EVENT", fn);
-      
-    //     return () => window.extmod?.removeEventListener("EXTMOD_EVENT", fn);
-    // }, []);
-  
-    // return (Component && <Component />) || <script src="/bundle.${id}.js" />;
-    return <script src="${bundlePath}" async />;
+    return <script data-id="${id}" src="${bundlePath}" defer />;
   };
   
   export default () => (

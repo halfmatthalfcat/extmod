@@ -21,23 +21,15 @@ export default defineConfig([
     target: "esnext",
     splitting: false,
     dts: true,
-    outExtension({ format }) {
-      return {
-        js: format === "esm" ? ".mjs" : `.js`,
-      };
-    },
   },
   {
-    entry: ["extmod_mgr.ts"],
-    outDir: "dist",
-    format: ["iife"],
+    entry: ["./client/index.ts"],
+    outDir: "dist/client",
+    format: ["esm"],
     target: "esnext",
     splitting: false,
-    minify: true,
-    outExtension({ format }) {
-      return {
-        js: format === "esm" ? ".mjs" : `.js`,
-      };
-    },
+    treeshake: false,
+    dts: true,
+    external: ["react"],
   },
 ]);
