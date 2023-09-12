@@ -1,5 +1,4 @@
 import { Plugin } from "esbuild";
-import { resolve as imr } from "import-meta-resolve";
 import { extname, join, resolve } from "node:path";
 import config from "../config";
 import logger from "../log";

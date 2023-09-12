@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "extmod run --ignoreWarnings -ll debug next dev",
+    "dev": "extmod run --cacheDir ./public/.extmod --ignoreWarnings -ll debug next dev",
     "build": "extmod run next build",
     "start": "extmod run next start",
     "lint": "next lint"

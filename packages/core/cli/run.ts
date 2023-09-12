@@ -7,7 +7,7 @@ import {
 import { resolve } from "import-meta-resolve";
 import { spawn } from "node:child_process";
 import { readFile, stat, unlink, writeFile } from "node:fs/promises";
-import { isAbsolute, join } from "node:path";
+import { isAbsolute, join, resolve as nResolve } from "node:path";
 import { temporaryFile } from "tempy";
 
 // @ts-ignore
@@ -52,15 +52,11 @@ const program = new Command()
   )
   .option(
     "--cacheDir <cacheDir>",
-    "A directory to store fetched, remote modules (typically for bundling). Must be an absolute path.",
+    "A directory to store fetched, remote modules (typically for bundling).",
     (value) =>
       isAbsolute(value)
         ? value
-        : (() => {
-            throw new InvalidOptionArgumentError(
-              `${value} must be an aboslute path.`
-            );
-          })(),
+        : nResolve(process.cwd(), value),
     `${process.cwd()}/.extmod`
   )
   .addOption(

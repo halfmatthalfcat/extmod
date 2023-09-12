@@ -1,9 +1,14 @@
+import * as parser from "@babel/parser";
+import t from "@babel/traverse";
 import isValidIdentifier from "is-valid-identifier";
 import { spawn as _spawn } from "node:child_process";
 import { writeFile as fsWriteFile, mkdir } from "node:fs/promises";
-import { basename } from "node:path";
 import { createRequire as nodeRequire } from "node:module";
+import { basename } from "node:path";
 const require = nodeRequire(import.meta.url);
+// @ts-ignore: babel .d.ts is wrong
+// @see: https://github.com/babel/babel/issues/15269
+const { default: traverse }: { default: typeof t } = t;
 
 export const time: <T>(
   fn: () => T | Promise<T>
@@ -79,4 +84,23 @@ export const cjsEsmWrapper = (path: string) => {
   }
 
   return output;
+};
+
+export const isNextJS = () => "__NEXT_PRIVATE_PREBUNDLED_REACT" in process.env;
+
+export const hasJsx = (contents: string) => {
+  let exists = false;
+
+  const program = parser.parse(contents, {
+    sourceType: "unambiguous",
+  });
+
+  traverse(program, {
+    JSXElement: (path) => {
+      exists = true;
+      path.stop();
+    },
+  });
+
+  return exists;
 };

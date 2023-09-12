@@ -1,5 +1,4 @@
-import { extmodEval } from "@extmod/core";
-import { Suspense } from "react";
+import { extmodClient } from "@extmod/core";
 // import Component from "./component";
 
 // export const dynamic = 'force-dynamic';
@@ -11,14 +10,14 @@ export default async function Home() {
 
   // console.log(Component);
 
-  const { default: Component } = await extmodEval("http://localhost:3333/react.mjs", "client");
+  const { default: Component } = await extmodClient({
+    url: "http://localhost:3333/react.mjs",
+  });
 
   return (
     <>
       <div>Server Component</div>
-      <Suspense fallback={<div>Loading...</div>}>
-        <Component />
-      </Suspense>
+      <Component />
     </>
   );
 }

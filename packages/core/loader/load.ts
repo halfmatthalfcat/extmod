@@ -1,57 +1,30 @@
 /// <reference types="typings-esm-loader" />
 
-import {
-  EXTMOD_ERROR,
-  EXTMOD_ERROR_CODE,
-  EXTMOD_ERROR_REASON,
-  ExtmodErrorCodes,
-  ExtmodInternalError,
-  getErrorReasonFromCode,
-} from "@/util/error";
+import { ExtmodErrorCodes, ExtmodInternalError } from "@/util/error";
 import g from "@babel/generator";
 import * as parser from "@babel/parser";
 import * as t from "@babel/types";
 import * as esbuild from "esbuild";
 import { readFile } from "node:fs/promises";
 import { dirname, extname, join, sep } from "node:path";
+import nextJsResolveTransform from "./babel/next-resolve-transform";
 import config from "./config";
 import EsbuildExtmodCJSToESM from "./esbuild/cjs-to-esm-exports";
 import EsbuildExtmodResolver from "./esbuild/extmod-resolver";
 import logger from "./log";
 import { port } from "./preload";
 import { ExtmodUrl } from "./url";
-import { spawn, time, writeFile } from "./util";
+import { isNextJS, spawn, time, writeFile } from "./util";
 // @ts-ignore: babel .d.ts is wrong
 // @see: https://github.com/babel/babel/issues/15269
 const { default: generate } = g;
 
 import { customAlphabet } from "nanoid";
+import { clientFlowSnippet } from "./snippets/client";
+import { errorSnippet } from "./snippets/error";
 const alphabet =
   "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
 const nanoid = customAlphabet(alphabet, 8);
-
-const buildError = (code: keyof typeof ExtmodErrorCodes) =>
-  generate(
-    t.exportDefaultDeclaration(
-      t.objectExpression([
-        t.objectProperty(
-          t.stringLiteral(EXTMOD_ERROR),
-          t.objectExpression([
-            t.objectProperty(
-              t.stringLiteral(EXTMOD_ERROR_CODE),
-              typeof code === "number"
-                ? t.numericLiteral(code)
-                : t.stringLiteral(code)
-            ),
-            t.objectProperty(
-              t.stringLiteral(EXTMOD_ERROR_REASON),
-              t.stringLiteral(getErrorReasonFromCode(code))
-            ),
-          ])
-        ),
-      ])
-    )
-  ).code;
 
 const _load: load = async (_resolvedUrl, context, next) => {
   const url = new ExtmodUrl(_resolvedUrl);
@@ -69,7 +42,7 @@ const _load: load = async (_resolvedUrl, context, next) => {
       return {
         format: "module",
         shortCircuit: true,
-        source: buildError(url.getError()),
+        source: errorSnippet(url.getError()),
         responseURL: url.href,
       };
     } else if (
@@ -89,7 +62,7 @@ const _load: load = async (_resolvedUrl, context, next) => {
       // import tree has resolved, which we need to do to bundle the client chunk.
       // This basically replicates it by spawning an import process wholesale against
       // the head of our client chunk levarging this same loader.
-      const promise = time(() =>
+      time(() =>
         spawn(
           "node",
           [
@@ -122,40 +95,63 @@ const _load: load = async (_resolvedUrl, context, next) => {
         if (!ext || ![".js", ".mjs"].includes(ext)) {
           path = join(path, "index.mjs");
         }
+        const outfile = join(config.EXTMOD_CACHE_DIR, "bundle", `${id}.js`);
 
         return time(() =>
           esbuild.build({
             entryPoints: [path],
             bundle: true,
             write: true,
-            outfile: `bundle.${id}.js`,
+            outfile,
             platform: "browser",
             format: "iife",
             globalName: `window.extmod["${id}"]`,
-            jsx: "automatic",
+            jsx: "preserve",
             plugins: [EsbuildExtmodCJSToESM, EsbuildExtmodResolver],
           })
-        ).then(([bundleMs]) => {
-          logger.debug(
-            `Client bundle esbuild for ${resolvedUrl} complete (${bundleMs.toFixed(
-              2
-            )}ms)`,
-            {
-              fn: "loader",
-            }
-          );
+        )
+          .then(async ([bundleMs]) => {
+            logger.debug(
+              `Client bundle esbuild for ${resolvedUrl} complete (${bundleMs.toFixed(
+                2
+              )}ms)`,
+              {
+                fn: "loader",
+              }
+            );
 
-          if (port) {
-            port.postMessage(id);
-          }
-        });
+            if (isNextJS()) {
+              await nextJsResolveTransform(outfile);
+            }
+          })
+          .then(() => {
+            if (port) {
+              port.postMessage(id);
+            }
+          });
+      });
+
+      const { outputFiles: [{ contents: source }] = [] } = await esbuild.build({
+        stdin: {
+          contents: clientFlowSnippet({
+            id,
+            bundlePath: `/.extmod/bundle/${id}.js`,
+          }),
+          loader: "jsx",
+        },
+        bundle: true,
+        write: false,
+        platform: "browser",
+        jsx: "automatic",
+        format: "esm",
+        plugins: [EsbuildExtmodCJSToESM, EsbuildExtmodResolver],
       });
 
       return {
         format: "module",
         source,
         shortCircuit: true,
-        responseURL: url.setBundle(true).href,
+        responseURL: url.href,
       };
     } else {
       try {
@@ -177,7 +173,7 @@ const _load: load = async (_resolvedUrl, context, next) => {
           return {
             format: "module",
             shortCircuit: true,
-            source: buildError(
+            source: errorSnippet(
               `L${response.status}` as keyof typeof ExtmodErrorCodes
             ),
             responseURL: url.href,
@@ -198,7 +194,7 @@ const _load: load = async (_resolvedUrl, context, next) => {
           return {
             format: "module",
             shortCircuit: true,
-            source: buildError(ExtmodInternalError.EXPECTED_ESM_FOUND_CJS),
+            source: errorSnippet(ExtmodInternalError.EXPECTED_ESM_FOUND_CJS),
             responseURL: url.href,
           };
         }
@@ -294,7 +290,7 @@ const _load: load = async (_resolvedUrl, context, next) => {
           return {
             format: "module",
             shortCircuit: true,
-            source: buildError(ExtmodInternalError.LOADER_FETCH_TIMEOUT),
+            source: errorSnippet(ExtmodInternalError.LOADER_FETCH_TIMEOUT),
             responseURL: url.href,
           };
         } else if (
@@ -314,7 +310,7 @@ const _load: load = async (_resolvedUrl, context, next) => {
           return {
             format: "module",
             shortCircuit: true,
-            source: buildError(ExtmodInternalError.LOADER_FETCH_ERROR),
+            source: errorSnippet(ExtmodInternalError.LOADER_FETCH_ERROR),
             responseURL: url.href,
           };
         } else if (ex instanceof Error) {
@@ -333,7 +329,7 @@ const _load: load = async (_resolvedUrl, context, next) => {
         return {
           format: "module",
           shortCircuit: true,
-          source: buildError(ExtmodInternalError.UNEXPECTED_ERROR),
+          source: errorSnippet(ExtmodInternalError.UNEXPECTED_ERROR),
           responseURL: url.href,
         };
       }

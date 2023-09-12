@@ -5,6 +5,6 @@ export default defineConfig({
   outDir: "out",
   format: ["esm", "cjs"],
   splitting: false,
-  external: ['react'],
-  target: 'esnext'
+  external: ["react"],
+  target: "esnext",
 });

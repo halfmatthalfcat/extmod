@@ -9,7 +9,7 @@ import { join, resolve } from "node:path";
 import config from "./config";
 import logger from "./log";
 import { ExtmodUrl } from "./url";
-import { time } from "./util";
+import { isNextJS, time } from "./util";
 const { parse: ccParse } = ccp;
 const require = nodeRequire(import.meta.url);
 
@@ -236,7 +236,7 @@ const _resolve: resolve = async (specifier, context, next) => {
       fn: "resolver",
     });
 
-    if ("__NEXT_PRIVATE_PREBUNDLED_REACT" in process.env) {
+    if (isNextJS()) {
       const { baseOverrides, experimentalOverrides } = await import(
         "next/dist/server/require-hook.js"
       );
