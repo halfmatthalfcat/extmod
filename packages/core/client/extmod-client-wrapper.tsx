@@ -1,6 +1,6 @@
 "use client";
 
-import "./extmod-client-mgr";
+import mgr, { EXTMOD_EVENT_TYPE } from "./extmod-client-mgr";
 
 import React, {
   FC,
@@ -31,7 +31,7 @@ export const ExtmodClientWrapper: FC<PropsWithChildren> = ({
         if ((window as any).extmod) {
           const Component = (window as any).extmod[
             script.getAttribute("data-id")!
-          ].default;
+          ]().default;
           setChildren([<Component />]);
         }
       });
@@ -40,15 +40,42 @@ export const ExtmodClientWrapper: FC<PropsWithChildren> = ({
 
   useEffect(() => {
     if (ref.current) {
-      const observer = new MutationObserver(observe);
-      observer.observe(ref.current, {
-        subtree: true,
-        childList: true,
-      });
+      const script = ref.current.querySelector("script");
+      const id = script?.getAttribute("data-id");
 
-      return () => {
-        observer.disconnect();
-      };
+      if (script && id && mgr[id]) {
+        console.log("preloaded");
+        const Component = mgr[id]().default;
+
+        setChildren([<Component />]);
+      } else if (script && id) {
+        console.log("loading");
+        // @ts-ignore
+        const fn = ({ target }) => {
+          console.log(target);
+          mgr.removeEventListener(EXTMOD_EVENT_TYPE, fn);
+        };
+        mgr.addEventListener(EXTMOD_EVENT_TYPE, fn);
+        script.addEventListener("load", () => {
+          if ((window as any).extmod) {
+            const Component = (window as any).extmod[
+              script.getAttribute("data-id")!
+            ]().default;
+            setChildren([<Component />]);
+          }
+        });
+      } else {
+        console.log("fetching");
+        const observer = new MutationObserver(observe);
+        observer.observe(ref.current, {
+          subtree: true,
+          childList: true,
+        });
+
+        return () => {
+          observer.disconnect();
+        };
+      }
     }
   }, [ref, observe]);
 

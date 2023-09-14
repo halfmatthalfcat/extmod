@@ -1,3 +1,21 @@
+/**
+ * We need to convert CJS style exports
+ * ---
+ * module.exports = {default}
+ * module.exports = {
+ *  named1: ...,
+ *  named2: ...,
+ * }
+ * ---
+ * into ESM exports for compatibility
+ * ---
+ * export default {default}
+ * export {
+ *  named1: ...,
+ *  named2: ...,
+ * }
+ */
+
 import * as parser from "@babel/parser";
 import { Plugin } from "esbuild";
 import { readFile } from "node:fs/promises";

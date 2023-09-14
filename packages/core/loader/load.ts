@@ -5,23 +5,23 @@ import g from "@babel/generator";
 import * as parser from "@babel/parser";
 import * as t from "@babel/types";
 import * as esbuild from "esbuild";
+import { customAlphabet } from "nanoid";
 import { readFile } from "node:fs/promises";
 import { dirname, extname, join, sep } from "node:path";
 import nextJsResolveTransform from "./babel/next-resolve-transform";
+import unwrapIifeTransform from "./babel/unwrap-iife-transform";
 import config from "./config";
 import EsbuildExtmodCJSToESM from "./esbuild/cjs-to-esm-exports";
 import EsbuildExtmodResolver from "./esbuild/extmod-resolver";
 import logger from "./log";
 import { port } from "./preload";
+import { clientFlowSnippet } from "./snippets/client";
+import { errorSnippet } from "./snippets/error";
 import { ExtmodUrl } from "./url";
 import { isNextJS, spawn, time, writeFile } from "./util";
 // @ts-ignore: babel .d.ts is wrong
 // @see: https://github.com/babel/babel/issues/15269
 const { default: generate } = g;
-
-import { customAlphabet } from "nanoid";
-import { clientFlowSnippet } from "./snippets/client";
-import { errorSnippet } from "./snippets/error";
 const alphabet =
   "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
 const nanoid = customAlphabet(alphabet, 8);
@@ -119,6 +119,8 @@ const _load: load = async (_resolvedUrl, context, next) => {
                 fn: "loader",
               }
             );
+
+            await unwrapIifeTransform(outfile);
 
             if (isNextJS()) {
               await nextJsResolveTransform(outfile);

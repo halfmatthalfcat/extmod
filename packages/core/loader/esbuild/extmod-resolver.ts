@@ -1,3 +1,8 @@
+/**
+ * We need to resolve various import statements to local
+ * modules
+ */
+
 import { Plugin } from "esbuild";
 import { extname, join, resolve } from "node:path";
 import config from "../config";

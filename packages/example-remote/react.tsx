@@ -6,5 +6,5 @@ export default () => {
     confetti();
   }, []);
 
-  return <div>Remote Control - LOL</div>;
+  return <div>Remote Control - heheh</div>;
 };

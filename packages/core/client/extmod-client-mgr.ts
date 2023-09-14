@@ -2,19 +2,25 @@
 
 export const EXTMOD_EVENT_TYPE = "EXTMOD_EVENT";
 
-class ExtmodEvent extends Event {
+export class ExtmodEvent extends Event {
   constructor(public id: string, public mod: any) {
     super(EXTMOD_EVENT_TYPE);
   }
 }
 
 class ExtmodManager extends EventTarget {
+  [mod: string]: any;
+
   #mods: Record<string, any> = {};
-  constructor() {
+  constructor(initial?: Record<string, any>) {
     super();
+    if (typeof initial === "object" && Object.keys(initial)) {
+      Object.entries(initial).forEach(([k, v]) => this.setMod(k, v));
+    }
   }
 
   setMod(id: string, mod: any) {
+    console.log(id);
     this.#mods[id] = mod;
     this.dispatchEvent(new ExtmodEvent(id, mod));
   }
@@ -24,8 +30,15 @@ class ExtmodManager extends EventTarget {
   }
 }
 
-typeof window !== "undefined" &&
-  ((window as any).extmod ??= new Proxy(new ExtmodManager(), {
+let mgr: ExtmodManager;
+
+if (
+  typeof window !== "undefined" &&
+  (window as any).extmod instanceof ExtmodManager
+) {
+  mgr = (window as any).extmod;
+} else if (typeof window !== "undefined") {
+  mgr = new Proxy(new ExtmodManager((window as any).extmod ?? {}), {
     set: (...args) => {
       const [target, prop, value] = args;
       if (typeof prop === "string") {
@@ -41,6 +54,15 @@ typeof window !== "undefined" &&
       ) {
         return target.getMod(prop);
       }
-      return Reflect.get(...args);
+      const value = Reflect.get(...args);
+      if (typeof value === "function") {
+        return value.bind(target);
+      } else {
+        return value;
+      }
     },
-  }));
+  });
+  (window as any).extmod = mgr;
+}
+
+export default mgr;

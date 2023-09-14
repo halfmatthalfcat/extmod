@@ -1,3 +1,14 @@
+/**
+ * This is a Next.js specific transform
+ * Next uses vendored versions of various things (most notibly React)
+ * and also resolves it's bundled modules client-side using it's own
+ * wrapper over Webpack's client-side resolve. We need to:
+ * (1) Replace the named import with React's client-side specific vendored import
+ * (2) Replace the require call with Next's specific require call
+ * (2a) Specifically for React 17 JSX helper imports, those need to be converted to
+ *      createElement client-side as there is no jsx(DEV) loaded into the client
+ */
+
 import g from "@babel/generator";
 import * as parser from "@babel/parser";
 import trvs from "@babel/traverse";
