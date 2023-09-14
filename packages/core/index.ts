@@ -1,12 +1,58 @@
+import { ExtmodUrl } from "@/loader/url";
 import { Extmod } from "@/util/types";
+import { ReactNode } from "react";
 
-export const extmod: <T extends object>(url: string) => Promise<Extmod<T>> = <
-  T extends object
->(
-  url: string
-) => import(url) as Promise<Extmod<T>>;
+const extmodTypes = ["json", "ssr", "client"] as const;
+export type ExtmodType = (typeof extmodTypes)[number];
 
-export const extmodEval: <T extends object>(
+export const extmod: <Module extends Record<string, any>>(
   url: string
-) => Promise<Extmod<T>> = <T extends object>(url: string) =>
-  (0, eval)(`import("${url}")`) as Promise<Extmod<T>>;
+) => Promise<Extmod<Module>> = <Module extends Record<string, any>>(
+  url: string
+) => import(url) as Promise<Extmod<Module>>;
+
+export const extmodSSR: <Module extends Record<string, any>>(
+  url: string
+) => Promise<Extmod<Module>> = <Module extends Record<string, any>>(
+  url: string
+) =>
+  (0, eval)(
+    `import("${url}", ${JSON.stringify({ assert: { type: "ssr" } })})`
+  ) as Promise<Extmod<Module>>;
+
+export const extmodClient: <
+  ServerModule extends Record<string, any>,
+  SMR,
+  ClientModule = SMR,
+  CMR = SMR
+>(opts: {
+  url: string;
+  fallbackFile?: string;
+  serverMapFn?: (mod: ServerModule) => SMR;
+  clientMapFn?: (mod: ClientModule) => CMR;
+}) => Promise<ReactNode> = ({
+  url,
+  fallbackFile,
+  serverMapFn,
+  clientMapFn,
+}) => {
+  const params = new URLSearchParams();
+
+  if (typeof serverMapFn === "function") {
+    params.set(ExtmodUrl.CLIENT_SERVER_FN_PARAM, btoa(serverMapFn.toString()));
+  }
+
+  if (typeof clientMapFn === "function") {
+    params.set(ExtmodUrl.CLIENT_CLIENT_FN_PARAM, btoa(clientMapFn.toString()));
+  }
+
+  if (typeof fallbackFile === "string") {
+    params.set(ExtmodUrl.CLIENT_FALLBACK_URL, fallbackFile);
+  }
+
+  return (0, eval)(
+    `import("${url}${params.toString()}", ${JSON.stringify({
+      assert: { type: "client" },
+    })})`
+  ) as Promise<ReactNode>;
+};

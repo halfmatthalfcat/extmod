@@ -1,12 +1,29 @@
 import { ExtmodErrorCodes } from "@/util/error";
+import { join } from "node:path";
+import type { TupleTail } from "./util";
 
 export class ExtmodUrl extends URL {
   static ERROR_PARAM = "__extmod_error";
   static ETAG_PARAM = "__extmod_etag";
   static TTL_PARAM = "__extmod_ttl";
+  static CLIENT_PARAM = "__extmod_client";
+  static BUNDLE_PARAM = "__extmod_bundle";
+  static CLIENT_SERVER_FN_PARAM = "__extmod_client_server_fn";
+  static CLIENT_CLIENT_FN_PARAM = "__extmod_client_client_fn";
+  static CLIENT_FALLBACK_URL = "__extmod_client_fallback";
+
+  static withProtocol = (
+    protocol: string,
+    path: string,
+    ...rest: TupleTail<ConstructorParameters<typeof URL>>
+  ) => new ExtmodUrl(join(protocol, path), ...rest);
 
   constructor(...url: ConstructorParameters<typeof URL>) {
     super(...url);
+  }
+
+  public isRemote(): boolean {
+    return /^https?/.test(this.protocol);
   }
 
   setError(code: keyof typeof ExtmodErrorCodes): this {
@@ -44,11 +61,40 @@ export class ExtmodUrl extends URL {
     return this.searchParams.get(ExtmodUrl.TTL_PARAM) as string;
   }
 
+  setClient(isClient: boolean): this {
+    this.searchParams.set(ExtmodUrl.CLIENT_PARAM, `${isClient}`);
+    return this;
+  }
+  hasClient(): boolean {
+    return this.searchParams.has(ExtmodUrl.CLIENT_PARAM);
+  }
+  getClient(): boolean {
+    return this.searchParams.get(ExtmodUrl.CLIENT_PARAM) === "true"
+      ? true
+      : false;
+  }
+
+  setBundle(isBundle: boolean): this {
+    this.searchParams.set(ExtmodUrl.BUNDLE_PARAM, `${isBundle}`);
+    return this;
+  }
+  hasBundle(): boolean {
+    return this.searchParams.has(ExtmodUrl.BUNDLE_PARAM);
+  }
+  getBundle(): boolean {
+    return this.searchParams.get(ExtmodUrl.BUNDLE_PARAM) === "true"
+      ? true
+      : false;
+  }
+
   toOG(): URL {
     const url = new URL(this);
-    [ExtmodUrl.ERROR_PARAM, ExtmodUrl.ETAG_PARAM, ExtmodUrl.TTL_PARAM].forEach(
-      (param) => url.searchParams.delete(param)
-    );
+    [
+      ExtmodUrl.ERROR_PARAM,
+      ExtmodUrl.ETAG_PARAM,
+      ExtmodUrl.TTL_PARAM,
+      ExtmodUrl.CLIENT_PARAM,
+    ].forEach((param) => url.searchParams.delete(param));
 
     return url;
   }

@@ -7,7 +7,7 @@ import {
 import { resolve } from "import-meta-resolve";
 import { spawn } from "node:child_process";
 import { readFile, stat, unlink, writeFile } from "node:fs/promises";
-import { join } from "node:path";
+import { isAbsolute, join, resolve as nResolve } from "node:path";
 import { temporaryFile } from "tempy";
 
 // @ts-ignore
@@ -50,6 +50,15 @@ const program = new Command()
           })(),
     "30000"
   )
+  .option(
+    "--cacheDir <cacheDir>",
+    "A directory to store fetched, remote modules (typically for bundling).",
+    (value) =>
+      isAbsolute(value)
+        ? value
+        : nResolve(process.cwd(), value),
+    `${process.cwd()}/.extmod`
+  )
   .addOption(
     new Option(
       "-ll, --logLevel <level>",
@@ -80,6 +89,7 @@ const program = new Command()
         resolverTimeoutMs,
         logOutput,
         logLevel,
+        cacheDir,
       }
     ) => {
       try {
@@ -170,6 +180,9 @@ const program = new Command()
               EXTMOD_LOG_TYPE: logOutput === "text" ? "console" : "json",
               EXTMOD_RESOLVER_TIMEOUT_MS: resolverTimeoutMs,
               EXTMOD_LOADER_TIMEOUT_MS: loaderTimeoutMs,
+              EXTMOD_CACHE_DIR: cacheDir,
+              EXTMOD_PERM_CONFIG_URL: tempConfig,
+              EXTMOD_IGNORE_WARNINGS: (ignoreWarnings ?? false).toString(),
             },
           }
         );

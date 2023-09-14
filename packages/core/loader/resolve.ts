@@ -1,13 +1,17 @@
+/// <reference types="typings-esm-loader" />
+
 import { ExtmodErrorCodes, ExtmodInternalError } from "@/util/error";
 import TTLCache from "@isaacs/ttlcache";
 import ccp from "cache-control-parser";
 import { resolve as imr } from "import-meta-resolve";
-import { join } from "node:path";
+import { createRequire as nodeRequire } from "node:module";
+import { join, resolve } from "node:path";
 import config from "./config";
 import logger from "./log";
 import { ExtmodUrl } from "./url";
-import { time } from "./util";
+import { isNextJS, time } from "./util";
 const { parse: ccParse } = ccp;
+const require = nodeRequire(import.meta.url);
 
 const etagCacheMap = new Map<string, string>();
 const ttlCacheMap = new TTLCache<string, number>();
@@ -25,17 +29,15 @@ const resolveWith = (
   importAssertions: importAssertions ?? {},
 });
 
-const resolve = async (
-  specifier: string,
-  context: { parentURL?: string; importAssertions?: object },
-  next: (specifier: string, context: object) => Promise<object>
-): Promise<object> => {
-  console.log(context);
-  logger.debug(`Resolving ${specifier}`, { fn: "resolver" });
+const _resolve: resolve = async (specifier, context, next) => {
   const parentURL = context.parentURL ? new ExtmodUrl(context.parentURL) : null;
 
   if (/^http?/.test(specifier)) {
     const url = new ExtmodUrl(specifier);
+
+    if (context.importAssertions?.type === "client") {
+      url.setClient(true);
+    }
 
     const existingTtl = ttlCacheMap.get(specifier);
     const existingEtag = etagCacheMap.get(specifier);
@@ -175,21 +177,95 @@ const resolve = async (
     }
 
     return resolveWith(url.href, context);
-  } else if (
-    parentURL?.protocol.startsWith("http") &&
-    specifier.startsWith("/")
+  }
+
+  if (
+    parentURL?.isRemote() &&
+    !parentURL.getBundle() &&
+    !parentURL.getClient()
   ) {
-    logger.debug(
-      `Got relative specifier ${specifier} for remote ${parentURL.toOG().href}`,
-      {
-        fn: "resolver",
-      }
-    );
-    return resolveWith(join(parentURL.origin, specifier), context);
-  } else if (!/.+:/.test(specifier)) {
+    if (specifier.startsWith("/")) {
+      logger.debug(
+        `Got absolute specifier ${specifier} for remote ${
+          parentURL.toOG().href
+        }`,
+        {
+          fn: "resolver",
+        }
+      );
+      return resolveWith(join(parentURL.origin, specifier), {
+        ...context,
+        importAssertions: parentURL.hasClient()
+          ? {
+              type: "client",
+            }
+          : {},
+      });
+    } else if (specifier.startsWith(".")) {
+      logger.debug(
+        `Got relative specifier ${specifier} for remote ${
+          parentURL.toOG().href
+        }`,
+        {
+          fn: "resolver",
+        }
+      );
+      return resolveWith(
+        join(parentURL.origin, resolve(parentURL.pathname, specifier)),
+        {
+          ...context,
+          importAssertions: parentURL.hasClient()
+            ? {
+                type: "client",
+              }
+            : {},
+        }
+      );
+    }
+  }
+
+  if (specifier.startsWith(".")) {
+    logger.debug(`Got relative specifier ${specifier}`, {
+      fn: "resolver",
+    });
+    return resolveWith(`file://${resolve(process.cwd(), specifier)}`, context);
+  }
+
+  if (!/^.+:\/\//.test(specifier)) {
     logger.debug(`Got bare specifier ${specifier}, trying to resolve locally`, {
       fn: "resolver",
     });
+
+    if (isNextJS()) {
+      const { baseOverrides, experimentalOverrides } = await import(
+        "next/dist/server/require-hook.js"
+      );
+      const effectiveOverrides =
+        process.env.__NEXT_PRIVATE_PREBUNDLED_REACT === "next"
+          ? baseOverrides
+          : experimentalOverrides;
+
+      if (Object.keys(effectiveOverrides).includes(specifier)) {
+        logger.debug(
+          `Resolving ${specifier} in a Next.js app (flavor: ${
+            process.env.__NEXT_PRIVATE_PREBUNDLED_REACT
+          }) with builtin ${
+            effectiveOverrides[specifier as keyof typeof effectiveOverrides]
+          }`,
+          {
+            fn: "resolver",
+          }
+        );
+
+        try {
+          const modulePath = require.resolve(
+            effectiveOverrides[specifier as keyof typeof effectiveOverrides]
+          );
+
+          return resolveWith(`file://${modulePath}`, context);
+        } catch {}
+      }
+    }
 
     try {
       // @ts-ignore
@@ -212,12 +288,18 @@ const resolve = async (
   return next(specifier, context);
 };
 
-export default async <P extends Parameters<typeof resolve>>(
+export default async <P extends Parameters<resolve>>(
   ...params: P
-): ReturnType<typeof resolve> => {
-  const [specifier, ...rest] = params;
-  const [ms, result] = await time(() => resolve(specifier, ...rest));
-  logger.debug(`Resolving ${specifier} took ${ms.toFixed(2)}ms`, {
+): ReturnType<resolve> => {
+  const [specifier, context, ...rest] = params;
+  logger.debug(
+    `Resolving ${specifier}${
+      context.parentURL ? ` (parent: ${context.parentURL})` : ""
+    }`,
+    { fn: "resolver" }
+  );
+  const [ms, result] = await time(() => _resolve(specifier, context, ...rest));
+  logger.debug(`Resolved ${specifier} took ${ms.toFixed(2)}ms`, {
     fn: "resolver",
   });
   return result;
