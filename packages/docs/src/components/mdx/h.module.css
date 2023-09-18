@@ -1,0 +1,9 @@
+.header:hover {
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.header > a {
+  color: unset;
+  text-decoration: unset;
+}

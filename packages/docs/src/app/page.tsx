@@ -1,5 +1,5 @@
-import HelloWorld from "./index.mdx";
+import Index from "./index.mdx";
 
 export default function Page() {
-  return <HelloWorld />;
+  return <Index />;
 }

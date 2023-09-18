@@ -1,4 +1,5 @@
 import { DocShell } from "@/components/shell";
+import "@mantine/code-highlight/styles.css";
 import { ColorSchemeScript, MantineProvider } from "@mantine/core";
 import "@mantine/core/styles.css";
 import type { Metadata } from "next";
@@ -22,7 +23,13 @@ export default function RootLayout({
         <ColorSchemeScript />
       </head>
       <body className={zen.className}>
-        <MantineProvider>
+        <MantineProvider
+          theme={{
+            headings: {
+              fontFamily: zen.style.fontFamily,
+            },
+          }}
+        >
           <DocShell>{children}</DocShell>
         </MantineProvider>
       </body>

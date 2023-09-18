@@ -1,1 +1,9 @@
+## Overview
 
+`extmod` is a CLI, runtime wrapper and API that allows Node applications to dynamically load remote ESM modules at runtime. To put it simply, `extmod`
+enables **http(s)-based import statements** within Node applications.
+
+`extmod` leverages already existing Node machinery, namely ESM module loaders and module permissions, to give both stability and security to the modules
+you are loading into your application.
+
+`extmod` also updates your modules in real-time, driven by etags or max-age Cache-Control headers, to enable the freshest code to be used, all out of the box.
