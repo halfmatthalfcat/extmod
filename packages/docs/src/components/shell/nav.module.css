@@ -1,0 +1,9 @@
+.link {
+  color: inherit;
+  text-decoration: underline;
+  font-size: 1.1rem;
+
+  @media (max-width: 48em) {
+    font-size: 1.5rem;
+  }
+}

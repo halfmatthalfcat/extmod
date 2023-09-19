@@ -1,5 +1,5 @@
 {
-  "name": "@extmod/example-remote",
+  "name": "extmod-example-remote",
   "private": true,
   "version": "0.0.0",
   "scripts": {

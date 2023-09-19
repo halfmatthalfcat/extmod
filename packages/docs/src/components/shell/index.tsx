@@ -1,10 +1,18 @@
 "use client";
 
-import { AppShell, Burger, Group, Skeleton, Title } from "@mantine/core";
+import { ActionIcon, AppShell, Burger, Group, Title } from "@mantine/core";
 import { useDisclosure } from "@mantine/hooks";
-import { FC, PropsWithChildren } from "react";
+import { IconBrandGithub } from "@tabler/icons-react";
+import { FC, PropsWithChildren, ReactNode } from "react";
 
-export const DocShell: FC<PropsWithChildren> = ({ children }) => {
+interface Props {
+  sidebar: ReactNode;
+}
+
+export const DocShell: FC<PropsWithChildren<Props>> = ({
+  children,
+  sidebar,
+}) => {
   const [opened, { toggle }] = useDisclosure();
 
   return (
@@ -14,21 +22,22 @@ export const DocShell: FC<PropsWithChildren> = ({ children }) => {
       padding="md"
     >
       <AppShell.Header>
-        <Group h="100%" px="md">
-          <Burger opened={opened} onClick={toggle} hiddenFrom="sm" size="sm" />
-          <Title order={2}>
-            extmod
-          </Title>
+        <Group h="100%" px="md" justify="space-between">
+          <Group>
+            <Burger
+              opened={opened}
+              onClick={toggle}
+              hiddenFrom="sm"
+              size="sm"
+            />
+            <Title order={2}>extmod</Title>
+          </Group>
+          <ActionIcon variant="outline">
+            <IconBrandGithub />
+          </ActionIcon>
         </Group>
       </AppShell.Header>
-      <AppShell.Navbar p="md">
-        Navbar
-        {Array(15)
-          .fill(0)
-          .map((_, index) => (
-            <Skeleton key={index} h={28} mt="sm" animate={false} />
-          ))}
-      </AppShell.Navbar>
+      <AppShell.Navbar p="md">{sidebar}</AppShell.Navbar>
       <AppShell.Main>{children}</AppShell.Main>
     </AppShell>
   );

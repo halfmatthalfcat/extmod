@@ -4,6 +4,7 @@ import { ColorSchemeScript, MantineProvider } from "@mantine/core";
 import "@mantine/core/styles.css";
 import type { Metadata } from "next";
 import { Zen_Maru_Gothic } from "next/font/google";
+import { TOC } from "./toc";
 
 const zen = Zen_Maru_Gothic({ subsets: ["latin"], weight: "400" });
 
@@ -30,7 +31,9 @@ export default function RootLayout({
             },
           }}
         >
-          <DocShell>{children}</DocShell>
+          <DocShell
+            sidebar={<TOC />}
+          >{children}</DocShell>
         </MantineProvider>
       </body>
     </html>

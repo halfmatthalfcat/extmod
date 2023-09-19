@@ -1,5 +1,5 @@
 {
-  "name": "@extmod/example-core",
+  "name": "extmod-example-core",
   "private": true,
   "version": "0.0.0",
   "scripts": {
@@ -8,7 +8,7 @@
     "build": "tsup"
   },
   "devDependencies": {
-    "@extmod/core": "*",
+    "extmod": "*",
     "@types/node": "^20.5.0",
     "tsup": "^7.2.0",
     "typescript": "^5.1.6"
