@@ -1,0 +1,156 @@
+## Overview
+
+`extmod` is a CLI, runtime wrapper and API that allows Node applications to dynamically load remote ESM modules at runtime. To put it simply, `extmod`
+enables **http(s)-based import statements** within Node applications.
+
+`extmod` leverages already existing Node machinery, namely [ESM module loaders](https://nodejs.org/api/module.html#customization-hooks) and [module permissions](https://nodejs.org/api/permissions.html#module-based-permissions), to give both stability and security to the modules
+you are loading into your application.
+
+`extmod` also updates your modules in real-time, driven by etags or max-age Cache-Control headers, to enable the freshest code to be used, all out of the box.
+
+Use `extmod` to:
+
+* Pull remote configuration files, ala feature flagging.
+* Leverage shared, common code in your organization.
+* Automatically bundle and serve frontend components in SSR/RSC applications, ala Federated Modules.
+
+## Getting Started
+
+> Node 18.x or greater is required
+
+### Installation
+
+<Group>
+  <GroupItem label="yarn">
+    ```sh 
+      yarn add extmod 
+    ```
+  </GroupItem>
+  <GroupItem label="npm">
+    ```sh 
+      npm i extmod 
+    ```
+  </GroupItem>
+  <GroupItem label="pnpm">
+    ```sh 
+      pnpm add extmod 
+    ```
+  </GroupItem>
+</Group>
+
+### Initialization
+
+The next step is to generate a `.extmod.json` configuration file.
+
+<Group>
+  <GroupItem label="npm">
+    ```sh 
+      npx extmod init
+    ```
+  </GroupItem>
+  <GroupItem label="pnpm">
+    ```sh 
+      pnpm exec extmod init
+    ```
+  </GroupItem>
+</Group>
+
+### Allow Remotes
+
+By default, remote modules are not enabled. You need to opt-in URLs that you have deemed safe to run within your application.
+
+To allow a remote URL to be loaded, you can use the `config add-remote` command.
+
+<Group>
+  <GroupItem label="npm">
+    ```sh 
+      npx extmod config add-remote https://my.module.com/
+    ```
+  </GroupItem>
+  <GroupItem label="pnpm">
+    ```sh 
+      pnpm exec extmod config add-remote https://my.module.com/
+    ```
+  </GroupItem>
+</Group>
+
+### Import Remotes
+
+You can now import your remote module in your application as you would any other ESM module.
+
+<Group>
+  <GroupItem label="typescript">
+    ```ts 
+    import utilities from "https://my.module.com/utilities.mjs";
+
+    console.log(utilities.magicNumber) // 42!
+    ```
+  </GroupItem>
+  <GroupItem label="javascript">
+    ```js 
+    import utilities from "https://my.module.com/utilities.mjs";
+
+    console.log(utilities.magicNumber) // 42!
+    ```
+  </GroupItem>
+</Group>
+
+### Application Bootstrap
+
+The final requirement is to leverage the `extmod run` command wrapper when you bootstrap your application.
+`extmod` will pass through anything you add after "run" to Node, however it will inject runtime flags which enable
+the `extmod` ESM loader as well as apply the module permissions policy you have defined.
+
+<Group>
+  <GroupItem label="node.js">
+    ```sh 
+    extmod run index.mjs
+    ```
+  </GroupItem>
+  <GroupItem label="next.js">
+    ```js 
+    extmod run next dev
+    ```
+  </GroupItem>
+</Group>
+
+## Mechanisms of Action
+
+The `extmod` loader consists of two primary mechanisms of action: resolving remote modules and loading the resolved code
+into the ESM machinery.
+
+### Resolving
+
+When `extmod` finds an import starting with `/^https?/`, it will automatically make a HEAD request to that
+module in order to determine whether:
+
+1. It has seen this specific module before.
+2. It has a changed `etag` value, indicating is has changed.
+3. It has a `max-age` Cache-Control header.
+
+Depending on the answers to the questions above, `extmod` will either load the existing module in the local ESM
+cache or it will make a GET request for an updated verison of the module.
+
+### Loading
+
+## Configuration
+
+## CLI
+
+### init
+
+### ls
+
+### run
+
+### validate
+
+## API
+
+### extmod
+
+### extmodSSR
+
+### extmodClient
+
+## In-Depth

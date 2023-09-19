@@ -1,5 +1,5 @@
 {
-  "name": "@extmod/example-next-ssr",
+  "name": "extmod-example-next-ssr",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -11,7 +11,7 @@
     "lint": "next lint"
   },
   "dependencies": {
-    "@extmod/core": "*",
+    "extmod": "*",
     "@types/node": "20.5.2",
     "@types/react": "^18.2.0",
     "@types/react-dom": "^18.2.0",
