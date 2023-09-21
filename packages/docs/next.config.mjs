@@ -18,7 +18,7 @@ export default createMDX({
       [
         rehypeAutolinkHeadings,
         {
-          behavior: "wrap",
+          behavior: "before",
         },
       ],
       rehypeMermaid,
