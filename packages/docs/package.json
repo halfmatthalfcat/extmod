@@ -6,8 +6,7 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint",
-    "postinstall": "npx playwright install-deps chromium"
+    "lint": "next lint"
   },
   "dependencies": {
     "@mantine/code-highlight": "^7.0.0",
@@ -21,6 +20,7 @@
     "@types/node": "20.6.2",
     "@types/react": "18.2.21",
     "@types/react-dom": "18.2.7",
+    "chromium": "^3.0.3",
     "eslint": "8.49.0",
     "eslint-config-next": "13.4.19",
     "mdast-util-from-markdown": "^2.0.0",
