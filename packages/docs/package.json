@@ -6,7 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "postinstall": "npx playwright install-deps chromium"
   },
   "dependencies": {
     "@mantine/code-highlight": "^7.0.0",
