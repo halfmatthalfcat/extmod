@@ -145,27 +145,6 @@ is supplied locally, you should pre-bundle your module with the dependency.
 After it has been determined a remote module should be loaded, a GET request against the module URL is made. Upon successful request,
 the remote module is fed through the same import process
 
-### Sequence of Events
-
-```mermaid
-sequenceDiagram
-  Application->>extmod-resolver: import "https..."
-  extmod-resolver-->>Application: Existing max-age TTL?
-  extmod-resolver->>Remote Module: HEAD
-  Remote Module->>extmod-resolver: HEAD response
-  extmod-resolver-->>Application: Existing etag?
-  alt response has etag
-      extmod-resolver-->>extmod-loader: Module + etag
-  else response has Cache-Control
-      extmod-resolver-->>extmod-loader: Module + max-age TTL
-  else
-      extmod-resolver-->>extmod-loader: Module (bare)
-  end
-  extmod-loader->>Remote Module: GET
-  Remote Module->>extmod-loader: GET response
-  extmod-loader->>Application: Load Module
-```
-
 ### Error Handling
 
 The points of failure in the resolution and loading process should be well known in order to guard effectively in your applications. `extmod` tries to

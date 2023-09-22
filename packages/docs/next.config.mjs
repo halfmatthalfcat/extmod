@@ -1,6 +1,5 @@
 import createMDX from "@next/mdx";
 import rehypeAutolinkHeadings from "rehype-autolink-headings";
-import rehypeMermaid from "rehype-mermaidjs";
 import rehypeSlug from "rehype-slug";
 
 /** @type {import('next').NextConfig} */
@@ -21,7 +20,6 @@ export default createMDX({
           behavior: "before",
         },
       ],
-      rehypeMermaid,
     ],
   },
 })(nextConfig);
