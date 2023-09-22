@@ -1,3 +1,3 @@
 "use client";
 
-export * from "./extmod-client-wrapper";
+export * from "./extmod-suspense";

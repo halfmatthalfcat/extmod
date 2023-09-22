@@ -53,10 +53,7 @@ const program = new Command()
   .option(
     "--cacheDir <cacheDir>",
     "A directory to store fetched, remote modules (typically for bundling).",
-    (value) =>
-      isAbsolute(value)
-        ? value
-        : nResolve(process.cwd(), value),
+    (value) => (isAbsolute(value) ? value : nResolve(process.cwd(), value)),
     `${process.cwd()}/.extmod`
   )
   .addOption(
@@ -117,14 +114,12 @@ const program = new Command()
 
         try {
           // @ts-ignore
-          loader = resolve("@extmod/core/loader", import.meta.url).replace(
+          loader = resolve("extmod/loader", import.meta.url).replace(
             "file://",
             ""
           );
         } catch {
-          return program.error(
-            `Unable to find @extmod/core/loader, terminating.`
-          );
+          return program.error(`Unable to find extmod/loader, terminating.`);
         }
 
         const tempConfig = temporaryFile({ extension: "json" });

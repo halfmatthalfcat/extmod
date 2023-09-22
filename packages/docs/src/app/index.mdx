@@ -291,41 +291,44 @@ containing the location of your bundle on disk.
   </GroupItem>
 </Group>
 
-#### Client-side Wrapper
+#### Client-side Utility
 
-An optional but encouraged step is to use the exported `ExtmodClientWrapper` component. After your client side component has successfully resolved to
+An optional but encouraged step is to use the exported `ExtmodSuspense` component. After your client side component has successfully resolved to
 a `<script>` and the bundle has been loaded into the browser, you need a way to ultimately render that component in-place, including adding an optional
-placeholder. 
+fallback. 
 
-`ExtmodClientWrapper` uses a `MutationObserver` to watch when a `<script>` tag is rendered within it and then replaces that `<script>` tag with the 
+`ExtmodSuspense` uses a `MutationObserver` to watch when a `<script>` tag is rendered within it and then replaces that `<script>` tag with the 
 bundle code that was loaded into the browser - all completely automatically.
 
 <Group>
   <GroupItem label="typescript">
     ```ts 
     import { FC } from "react";
-    import { ExtmodClientWrapper } from "extmod/client";
+    import { ExtmodSuspense } from "extmod/client";
     import Component from "https://my.module.com/index.mjs" with { type: "client" };
 
     export const MyRemoteComponent: FC = () => (
       // The wrapper waits until our <script> tag is rendered via Suspense.
       // It then replaces it with our bundled client component.
-      <ExtmodClientWrapper fallback={<div>Loading...</div>}>
-        <Component />
-      </ExtmodClientWrapper>
+      <ExtmodSuspense 
+        component={<Component />}
+        fallback={<div>Loading...</div>} 
+      />
     );
     ```
   </GroupItem>
   <GroupItem label="javascript">
     ```js 
+    import { ExtmodSuspense } from "extmod/client";
     import Component from "https://my.module.com/index.mjs" with { type: "client" };
 
     export const MyRemoteComponent = () => (
       // The wrapper waits until our <script> tag is rendered via Suspense.
       // It then replaces it with our bundled client component.
-      <ExtmodClientWrapper fallback={<div>Loading...</div>}>
-        <Component />
-      </ExtmodClientWrapper>
+      <ExtmodSuspense 
+        component={<Component />}
+        fallback={<div>Loading...</div>} 
+      />
     );
     ```
   </GroupItem>
