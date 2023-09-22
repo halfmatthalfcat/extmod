@@ -10,9 +10,9 @@ you are loading into your application.
 
 Use `extmod` to:
 
-* Pull remote configuration files, ala feature flagging.
-* Leverage shared, common code in your organization.
-* Automatically bundle and serve frontend components in SSR/RSC applications, ala Federated Modules.
+- Pull remote configuration files, ala feature flagging.
+- Leverage shared, common code in your organization.
+- Automatically bundle and serve frontend components in SSR/RSC applications, ala Federated Modules.
 
 ## Getting Started
 
@@ -23,17 +23,17 @@ Use `extmod` to:
 <Group>
   <GroupItem label="yarn">
     ```sh 
-      yarn add extmod 
+    yarn add extmod 
     ```
   </GroupItem>
   <GroupItem label="npm">
     ```sh 
-      npm i extmod 
+    npm i extmod 
     ```
   </GroupItem>
   <GroupItem label="pnpm">
     ```sh 
-      pnpm add extmod 
+    pnpm add extmod
     ```
   </GroupItem>
 </Group>
@@ -44,13 +44,13 @@ The next step is to generate a `.extmod.json` configuration file.
 
 <Group>
   <GroupItem label="npm">
-    ```sh 
-      npx extmod init
+    ```sh
+    npx extmod init
     ```
   </GroupItem>
   <GroupItem label="pnpm">
     ```sh 
-      pnpm exec extmod init
+    pnpm exec extmod init
     ```
   </GroupItem>
 </Group>
@@ -64,12 +64,12 @@ To allow a remote URL to be loaded, you can use the `config add-remote` command.
 <Group>
   <GroupItem label="npm">
     ```sh 
-      npx extmod config add-remote https://my.module.com/
+    npx extmod config add-remote https://my.module.com/
     ```
   </GroupItem>
   <GroupItem label="pnpm">
-    ```sh 
-      pnpm exec extmod config add-remote https://my.module.com/
+    ```sh
+    pnpm exec extmod config add-remote https://my.module.com/
     ```
   </GroupItem>
 </Group>
@@ -85,6 +85,7 @@ You can now import your remote module in your application as you would any other
 
     console.log(utilities.magicNumber) // 42!
     ```
+
   </GroupItem>
   <GroupItem label="javascript">
     ```js 
@@ -92,6 +93,7 @@ You can now import your remote module in your application as you would any other
 
     console.log(utilities.magicNumber) // 42!
     ```
+
   </GroupItem>
 </Group>
 
@@ -104,20 +106,19 @@ the `extmod` ESM loader as well as apply the module permissions policy you have 
 <Group>
   <GroupItem label="node.js">
     ```sh 
-    extmod run index.mjs
+      extmod run index.mjs
     ```
   </GroupItem>
   <GroupItem label="next.js">
-    ```js 
-    extmod run next dev
+    ```sh
+      extmod run next dev 
     ```
   </GroupItem>
 </Group>
 
 ## Mechanisms of Action
 
-The `extmod` loader consists of two primary mechanisms of action: resolving remote modules and loading the resolved code
-into the ESM machinery.
+`extmod` goes through various stages depending on the modules being requested, their ESM cache status and the module contents.
 
 ### Resolving
 
@@ -125,13 +126,213 @@ When `extmod` finds an import starting with `/^https?/`, it will automatically m
 module in order to determine whether:
 
 1. It has seen this specific module before.
-2. It has a changed `etag` value, indicating is has changed.
+2. It has a changed `etag` value, indicating it has changed.
 3. It has a `max-age` Cache-Control header.
 
 Depending on the answers to the questions above, `extmod` will either load the existing module in the local ESM
 cache or it will make a GET request for an updated verison of the module.
 
+> If no etag or max-age Cache-Control header is found, once loaded, the remote module will be cached within the ESM cache
+> indefinitely. There is currently no way to "bust" or remove a loaded ESM module from the ESM cache, so the cache will
+> grow unbounded if not restricted.
+
+By default, bare module imports (such as "react" or "lodash") are resolved **locally**. This aligns with how most bundlers work with "externals" defined.
+You should treat bare module imports in your remote modules as being external, where `extmod` will look to the local project for that dependency. If you wish for your remote modules to leverage different versions other than what
+is supplied locally, you should pre-bundle your module with the dependency.
+
 ### Loading
+
+After it has been determined a remote module should be loaded, a GET request against the module URL is made. Upon successful request,
+the remote module is fed through the same import process
+
+### Error Handling
+
+The points of failure in the resolution and loading process should be well known in order to guard effectively in your applications. `extmod` tries to
+make handling these points of failure easier by bubbling up the error into your application code as data, rather than as a bonefide error.
+
+There are two primary classes errors: network errors (both in resolving and loading modules) and module errors (loading a CommonJS vs ESM module for instance).
+
+Handling these errors involves using the `extmod` supplied error key and determining whether an error exists within your application code.
+
+<Group>
+  <GroupItem label="typescript">
+    ```ts 
+    // Import our remote component
+    import * as utilities from "https://my.module.com/utilities.mjs";
+    // Import extmod error keys
+    import { EXTMOD_ERROR, EXTMOD_ERROR_CODE, EXTMOD_ERROR_REASON, Extmod } from "extmod";
+    // Deconstruct out a possible error
+    const { [EXTMOD_ERROR]: error, default } = utilities as Extmod<{ default: any }>;
+
+    if (error) {
+      const {
+        [EXTMOD_ERROR_CODE]: code,
+        [EXTMOD_ERROR_REASON]: reason,
+      } = error;
+      // handle code and reason
+    } else {
+      // use your default (if applicable) import
+    }
+    ```
+
+  </GroupItem>
+  <GroupItem label="javascript">
+    ```js 
+    // Import our remote component
+    import * as utilities from "https://my.module.com/utilities.mjs";
+    // Import extmod error keys
+    import { EXTMOD_ERROR, EXTMOD_ERROR_CODE, EXTMOD_ERROR_REASON, Extmod } from "extmod";
+    // Deconstruct out a possible error
+    const { [EXTMOD_ERROR]: error, default } = utilities;
+
+    if (error) {
+      const {
+        [EXTMOD_ERROR_CODE]: code,
+        [EXTMOD_ERROR_REASON]: reason,
+      } = error;
+      // handle code and reason
+    } else {
+      // use your default (if applicable) import
+    }
+    ```
+
+  </GroupItem>
+</Group>
+
+### Server Side Rendering
+
+Since `extmod` is leveraging normal Node `import` machinery, all imported modules are assumed to be tailored for a server environment by default.
+However, with the rise of Server Side Rendering frameworks, the lines have been blurred on what imported code is being ran on the server and ran
+on the client (browser).
+
+> Currently, only React 18+ is supported.
+
+When `extmod` detects an import is to be used in a browser environment, it will automatically write it and any imported dependencies to disk, bundle
+them (via esbuild) and make it available to the browser for rendering.
+
+#### Import Signaling
+
+There are two ways to trigger client bundling through `extmod`, import attributes or the `"use client"` directive in the remote module.
+
+##### Import Attribute
+
+A new feature of ECMAScript allows attributes to be attached to import statements in order to inform the ESM loader of particularities around _what_
+is being imported. `extmod` leverages this with a new `client` attribute to singal the loader that the imported module should be treated as a client
+module.
+
+<Group>
+  <GroupItem label="typescript">
+    ```ts 
+      import { MyModule } from "https://my.module.com/index.mjs" with { type: "client" };
+    ```
+  </GroupItem>
+  <GroupItem label="javascript">
+    ```js 
+      import { MyModule } from "https://my.module.com/index.mjs" with { type: "client" };
+    ```
+  </GroupItem>
+</Group>
+
+##### "use client" Directive
+
+React and frameworks have aligned on the `"use client"` Javascript directive to describe the server/client boundry in Server Side Rendering. `extmod` looks
+for this directive in remotely loaded modules to enforce that boundry and create the client bundle dynamically.
+
+> You do not add "use client" in your application code, rather you define it in your remote module and `extmod` will detect it automatically during runtime.
+
+<Group>
+  <GroupItem label="typescript">
+    ```ts 
+    "use client";
+
+    // Browser-centric code
+    ```
+  </GroupItem>
+  <GroupItem label="javascript">
+    ```js 
+    "use client";
+
+    // Browser-centric code
+    ```
+  </GroupItem>
+</Group>
+
+#### Suspense + Bundling
+
+In order for a seamless UX, `extmod` uses React's `Suspense` to pause component rendering while the bundling process occurs; the frontend should continue rendering unabated.
+When you declare a client import, `extmod` immediately returns a default export containing a `Suspense`-based component that will resolve into a `<script>` tag
+containing the location of your bundle on disk.
+
+<Group>
+  <GroupItem label="typescript">
+    ```ts 
+    import { FC } from "react";
+    import Component from "https://my.module.com/index.mjs" with { type: "client" };
+
+    export const MyRemoteComponent: FC = () => (
+      // Initially Component resolves to a placeholder while the bundle is created.
+      // After bundling is completed, a <script> tag is rendered here with a src
+      // corresponding to the completed bundle location on the server.
+      <Component />
+    );
+    ```
+  </GroupItem>
+  <GroupItem label="javascript">
+    ```js 
+    import Component from "https://my.module.com/index.mjs" with { type: "client" };
+
+    export const MyRemoteComponent = () => (
+      // Initially Component resolves to a placeholder while the bundle is created.
+      // After bundling is completed, a <script> tag is rendered here with a src
+      // corresponding to the completed bundle location on the server.
+      <Component />
+    );
+    ```
+  </GroupItem>
+</Group>
+
+#### Client-side Utility
+
+An optional but encouraged step is to use the exported `ExtmodSuspense` component. After your client side component has successfully resolved to
+a `<script>` and the bundle has been loaded into the browser, you need a way to ultimately render that component in-place, including adding an optional
+fallback. 
+
+`ExtmodSuspense` uses a `MutationObserver` to watch when a `<script>` tag is rendered within it and then replaces that `<script>` tag with the 
+bundle code that was loaded into the browser - all completely automatically.
+
+<Group>
+  <GroupItem label="typescript">
+    ```ts 
+    import { FC } from "react";
+    import { ExtmodSuspense } from "extmod/client";
+    import Component from "https://my.module.com/index.mjs" with { type: "client" };
+
+    export const MyRemoteComponent: FC = () => (
+      // The wrapper waits until our <script> tag is rendered via Suspense.
+      // It then replaces it with our bundled client component.
+      <ExtmodSuspense 
+        component={<Component />}
+        fallback={<div>Loading...</div>} 
+      />
+    );
+    ```
+  </GroupItem>
+  <GroupItem label="javascript">
+    ```js 
+    import { ExtmodSuspense } from "extmod/client";
+    import Component from "https://my.module.com/index.mjs" with { type: "client" };
+
+    export const MyRemoteComponent = () => (
+      // The wrapper waits until our <script> tag is rendered via Suspense.
+      // It then replaces it with our bundled client component.
+      <ExtmodSuspense 
+        component={<Component />}
+        fallback={<div>Loading...</div>} 
+      />
+    );
+    ```
+  </GroupItem>
+</Group>
 
 ## Configuration
 
@@ -141,6 +342,8 @@ cache or it will make a GET request for an updated verison of the module.
 
 ### ls
 
+### config
+
 ### run
 
 ### validate
@@ -148,9 +351,3 @@ cache or it will make a GET request for an updated verison of the module.
 ## API
 
 ### extmod
-
-### extmodSSR
-
-### extmodClient
-
-## In-Depth

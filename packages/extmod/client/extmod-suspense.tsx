@@ -1,21 +1,26 @@
 "use client";
 
+import type { ReactNode } from "react";
 import mgr, { EXTMOD_EVENT_TYPE } from "./extmod-client-mgr";
 
 import React, {
   FC,
-  PropsWithChildren,
   useCallback,
   useEffect,
   useRef,
-  useState,
+  useState
 } from "react";
 
-export const ExtmodClientWrapper: FC<PropsWithChildren> = ({
-  children: _children,
+interface Props {
+  component: ReactNode;
+  fallback?: ReactNode;
+}
+export const ExtmodSuspense: FC<Props> = ({
+  component,
+  fallback = <></>,
 }) => {
   const ref = useRef<HTMLDivElement>(null);
-  const [children, setChildren] = useState(_children ?? []);
+  const [children, setChildren] = useState([fallback, component]);
 
   const observe = useCallback<MutationCallback>((mutations) => {
     const [script] = mutations

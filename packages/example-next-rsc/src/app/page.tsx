@@ -1,26 +1,20 @@
-import { extmodClient } from "@extmod/core";
-import { ExtmodClientWrapper } from "@extmod/core/client";
-// import Component from "./component";
-
-// export const dynamic = 'force-dynamic';
+import { extmod } from "extmod";
+import { ExtmodSuspense } from "extmod/client";
 
 export default async function Home() {
-  // We need to wrap our import in an eval to avoid mangling/transforming from Webpack
   // @ts-ignore
-  // const Component = await ;
-
-  // console.log(Component);
-
-  const { default: Component } = await extmodClient({
-    url: "http://localhost:3333/react.mjs",
-  });
+  const { default: Component } = await extmod(
+    "http://localhost:3333/react.mjs",
+    "client"
+  );
 
   return (
     <>
       <div>Server Component</div>
-      <ExtmodClientWrapper>
-        <Component />
-      </ExtmodClientWrapper>
+      <ExtmodSuspense
+        component={<Component />}
+        fallback={<div>Hello World</div>}
+      />
     </>
   );
 }

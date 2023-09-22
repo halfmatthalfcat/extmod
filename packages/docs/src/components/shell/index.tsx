@@ -37,7 +37,12 @@ export const DocShell: FC<PropsWithChildren<Props>> = ({
           </ActionIcon>
         </Group>
       </AppShell.Header>
-      <AppShell.Navbar p="md">{sidebar}</AppShell.Navbar>
+      <AppShell.Navbar
+        p="md"
+        style={{ overflowY: "scroll", scrollBehavior: "smooth" }}
+      >
+        {sidebar}
+      </AppShell.Navbar>
       <AppShell.Main>{children}</AppShell.Main>
     </AppShell>
   );

@@ -1,7 +1,7 @@
 "use client";
 
 import type { TOCTree } from "@/app/toc";
-import { Box } from "@mantine/core";
+import { Box, ScrollArea } from "@mantine/core";
 import Slugger from "github-slugger";
 import { FC, ReactNode } from "react";
 import classes from "./nav.module.css";
