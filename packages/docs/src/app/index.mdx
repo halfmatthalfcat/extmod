@@ -140,6 +140,16 @@ By default, bare module imports (such as "react" or "lodash") are resolved **loc
 You should treat bare module imports in your remote modules as being external, where `extmod` will look to the local project for that dependency. If you wish for your remote modules to leverage different versions other than what
 is supplied locally, you should pre-bundle your module with the dependency.
 
+#### Permissions
+
+Pulling content from potentially untrusted sources has inherent security risks. `extmod` tries to allievate this concern by leveraging Node's
+[module permission](https://nodejs.org/api/permissions.html#module-based-permissions) infrastructure, which validates only approved modules when they are loaded by the runtime, and rejects all others.
+
+Remote modules are not enabled by default. You must use the `extmod` CLI's config actions to add allowable remote module URLs (or domains) that you trust
+in order for them to be loaded into your applications.
+
+See the [Configuration](#configuration) section on how to do this.
+
 ### Loading
 
 After it has been determined a remote module should be loaded, a GET request against the module URL is made. Upon successful request,
@@ -336,18 +346,227 @@ bundle code that was loaded into the browser - all completely automatically.
 
 ## Configuration
 
+`extmod` configuration lives in a `.extmod.json` file at the root of your project and drives key features. Because of the complexity of
+managing module permissions, it is advised to use the `extmod` CLI unless you are versed in how Node module permissions are used. That being said,
+`extmod` uses an opinionated configuration of the module permission spec speficially tailored for remote modules.
+
+For further information on the mechanics about how Node module permissions work, consult the [Node documentation](https://nodejs.org/api/permissions.html#module-based-permissions).
+
+> The `.extmod.json` configuraiton strictly validated before any CLI command is ran. To avoid errors, do not manually change the configuration file.
+> Rather, use the CLI to perform operations against the configuraiton file.
+
+```ts
+{
+  interface ExtmodConfiguration {
+    // The current configuration verison
+    version: string;
+    // A mapping of aliases to remote module URLs
+    aliases: Record<string, string>;
+    // The nested Node module permissions configuration
+    policy: {
+      // Individual remote file permissions
+      resources: {
+        [url: string]: {
+          dependencies: boolean;
+          integrity?: string;
+        };
+      };
+      // Remote, cascading path permissions
+      // e.g. https://my.module/*, allowing any module under the my.module domain
+      scopes: {
+        [url: string]: {
+          dependencies: boolean;
+          integrity?: string;
+        }
+      };
+    };
+  }
+}
+```
+
 ## CLI
+
+The `extmod` CLI is helpful in managing it's configuration and running programs to enact said configuration.
 
 ### init
 
+Create a new `.extmod.json` configuration file with defaults. Note, remote modules are disabled by default.
+
+<Group>
+  <GroupItem label="npm">
+    ```sh 
+    npx extmod init
+    ```
+  </GroupItem>
+  <GroupItem label="pnpm">
+    ```sh
+    pnpm exec extmod init
+    ```
+  </GroupItem>
+</Group>
+
+
 ### ls
+
+List out the current configuration in an easily consumable format within the console.
+
+<Group>
+  <GroupItem label="npm">
+    ```sh 
+    npx extmod init
+    ```
+  </GroupItem>
+  <GroupItem label="pnpm">
+    ```sh
+    pnpm exec extmod init
+    ```
+  </GroupItem>
+</Group>
+
+|flag|default|description|
+|---|---|---|
+|-p, --path|`process.cwd()`|Path to an `.extmod.json` file|
 
 ### config
 
+Config subcommands aid in the management of the `extmod` configuration file.
+
+#### add-remote
+
+Add a remote module path. This allows any resources under the given URL to be imported into your application.
+
+<Group>
+  <GroupItem label="s3">
+    ```sh 
+    # Allow any resource under myProject/ to be imported.
+    # For example https://s3-us-east-1.amazonaws.com/myOrg/myProject/myModule.mjs
+    npx extmod config add-remote https://s3-us-east-1.amazonaws.com/myOrg/myProject/
+    ```
+  </GroupItem>
+  <GroupItem label="azure">
+    ```sh
+    # Allow any resource under myProject/ to be imported.
+    # For example https://myaccount.blob.core.windows.net/mycontainer/myblob/myModule.mjs
+    npx extmod config add-remote https://myaccount.blob.core.windows.net/mycontainer/myblob/
+    ```
+  </GroupItem>
+</Group>
+
+|flag|default|description|
+|---|---|---|
+|-p, --path|`process.cwd()`|Path to an `.extmod.json` file|
+|-a, --alias| |Add an optional alias to the remote. Makes working with the remote via the CLI easier|
+|-f, --force|false|Force the creation/replacement of the module entry|
+
+#### update-remote
+
+Update the remote URL via the original URL or the alias.
+
+<Group>
+  <GroupItem label="without alias">
+    ```sh 
+    # Assume we've ran "npx extmod config add-remote https://s3-us-east-1.amazonaws.com/myOrg/myProject/"
+    npx extmod config update-remote https://s3-us-east-1.amazonaws.com/myOrg/myProject/ https://s3-us-east-1.amazonaws.com/myOtherOrg/myOtherProject/
+    ```
+  </GroupItem>
+  <GroupItem label="with alias">
+    ```sh
+    # Assume we've ran "npx extmod config add-remote -a my-project https://myaccount.blob.core.windows.net/mycontainer/myblob/"
+    npx extmod config update-remote my-project https://myaccount.blob.core.windows.net/myothercontainer/myotherblob/
+    ```
+  </GroupItem>
+</Group>
+
+|flag|default|description|
+|---|---|---|
+|-p, --path|`process.cwd()`|Path to an `.extmod.json` file|
+
+#### delete-remote
+
+Delete a remote URL via the original URL or the alias.
+
+<Group>
+  <GroupItem label="without alias">
+    ```sh 
+    # Assume we've ran "npx extmod config add-remote https://s3-us-east-1.amazonaws.com/myOrg/myProject/"
+    npx extmod config delete-remote https://s3-us-east-1.amazonaws.com/myOrg/myProject/
+    ```
+  </GroupItem>
+  <GroupItem label="with alias">
+    ```sh
+    # Assume we've ran "npx extmod config add-remote -a my-project https://myaccount.blob.core.windows.net/mycontainer/myblob/"
+    npx extmod config delete-remote my-project
+    ```
+  </GroupItem>
+</Group>
+
+|flag|default|description|
+|---|---|---|
+|-p, --path|`process.cwd()`|Path to an `.extmod.json` file|
+
 ### run
+
+Run a Node command with `extmod` enabled.
+
+<Group>
+  <GroupItem label="node.js">
+    ```sh 
+      extmod run index.mjs
+    ```
+  </GroupItem>
+  <GroupItem label="next.js">
+    ```sh
+      extmod run next dev 
+    ```
+  </GroupItem>
+</Group>
+
+|flag|default|description|
+|---|---|---|
+|-p, --path|`process.cwd()`|Path to an `.extmod.json` file|
+|-ll, --log-level|info|Set the desired log level emitted from `extmod`. Possible options: "error", "warn", "info", "debug"|
+|-lo, --log-output|text|Set the desired log output format. Possible options: "text", "json"|
+|--cacheDir|`process.cwd()/.extmod`|The desired location for the extmod cache directory|
+|--resolverTimeoutMs|30000|The amount of time, in ms, to try and resolve a remote module|
+|--loaderTimeoutMs|30000|The amount of time, in ms, to try and load a remote module|
+|--ignoreWarnings|false|Supress Node experimental warning messages|
 
 ### validate
 
+Validate an `extmod` configuration file. Outputs an error and description if configuration is malformed.
+
+<Group>
+  <GroupItem label="npm">
+    ```sh 
+    npx extmod validate
+    ```
+  </GroupItem>
+  <GroupItem label="pnpm">
+    ```sh
+    pnpm exec extmod validate
+    ```
+  </GroupItem>
+</Group>
+
+|flag|default|description|
+|---|---|---|
+|-p, --path|`process.cwd()`|Path to an `.extmod.json` file|
+
 ## API
 
+The externally facing API of `extmod` is quite simple and usually not needed.
+
 ### extmod
+
+The exported `extmod()` function is available for situations where using the normal `import` Node semantics are not ideal. This is usually 
+done in cases where the application is using a bundler that transforms `import` into `require` or statically evalutes `import` at build-time
+and is not equipt to handle remote imports.
+
+```ts
+export type extmod = (
+  url: string,
+  type?: "json" | "client",
+) => Promise<any>
+```
+
+Under the hood, `extmod()` simply wraps the normal `import` in an `eval` to "hide" until runtime, to which things perform as expected.

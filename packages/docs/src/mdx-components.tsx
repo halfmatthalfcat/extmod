@@ -4,6 +4,7 @@ import a from "./components/mdx/a";
 import { block } from "./components/mdx/block";
 import { code } from "./components/mdx/code";
 import { Group, GroupItem } from "./components/mdx/group";
+import { table, tbody, td, th, thead, tr } from "./components/mdx/table";
 
 // This file allows you to provide custom React components
 // to be used in MDX files. You can import and use any
@@ -24,6 +25,12 @@ export function useMDXComponents(components: MDXComponents): MDXComponents {
     h5: h(5),
     code: code,
     blockquote: block,
+    table: table,
+    thead: thead,
+    tbody: tbody,
+    tr: tr,
+    th: th,
+    td: td,
     Group,
     GroupItem,
   };
