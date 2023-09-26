@@ -11,7 +11,7 @@ import logger from "./log";
 import { ExtmodUrl } from "./url";
 import { isNextJS, time } from "./util";
 const { parse: ccParse } = ccp;
-const require = nodeRequire(import.meta.url);
+const _require = nodeRequire(import.meta.url);
 
 const etagCacheMap = new Map<string, string>();
 const ttlCacheMap = new TTLCache<string, number>();
@@ -258,7 +258,7 @@ const _resolve: resolve = async (specifier, context, next) => {
         );
 
         try {
-          const modulePath = require.resolve(
+          const modulePath = _require.resolve(
             effectiveOverrides[specifier as keyof typeof effectiveOverrides]
           );
 
@@ -278,7 +278,11 @@ const _resolve: resolve = async (specifier, context, next) => {
       if (modulePath) {
         return resolveWith(modulePath, context);
       }
-    } catch {}
+    } catch {
+      logger.warn(`Unable to find ${specifier} locally.`, {
+        fn: "resolver",
+      });
+    }
   }
 
   logger.debug(`Continuing resolve chain for ${specifier}`, {
